@@ -1,3 +1,5 @@
+server:
+  port: ${SERVER_PORT:8081}  # 이 맥은 8080을 다른 앱이 쓴다
 spring:
   application:
     name: backend

@@ -80,7 +80,7 @@ export interface paths {
         /**
          * 첫 로그인 닉네임 설정(가입 완료)
          * @description OAuth2 로그인은 됐지만 회원이 아닌 가입 대기 세션에서만 호출한다(users.nickname NOT NULL이므로 이 호출에서 users 행을 만든다).
-         *     닉네임 형식: 2~12자, 한글·영문·숫자·밑줄(`^[가-힣A-Za-z0-9_]{2,12}$`). 위반 시 400 `VALIDATION_FAILED`(fieldErrors[nickname]).
+         *     닉네임 규칙은 `NicknameRequest` 참고(PATCH /api/me/nickname 과 같다). 가입 시 최초 설정은 30일 변경 제한 대상이 아니며 제한 시계도 시작하지 않는다.
          *
          */
         post: operations["completeSignup"];
@@ -106,7 +106,8 @@ export interface paths {
         post?: never;
         /**
          * 회원 탈퇴
-         * @description status=WITHDRAWN, nickname=NULL, social_accounts 삭제, 세션 무효화. 작성한 글·댓글은 남고 작성자 닉네임이 null로 보인다.
+         * @description LAST_SOCIAL_ACCOUNT 규칙과 무관하게 항상 가능하다. users.nickname=NULL, status=WITHDRAWN, withdrawn_at=now() 기록,
+         *     social_accounts 전부 삭제, 세션 무효화. 작성한 글·댓글은 남고 작성자 닉네임이 null로 보인다.
          *     같은 소셜 계정으로 다시 로그인하면 새 가입이다.
          *
          */
@@ -114,6 +115,29 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/me/nickname": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 닉네임 변경 (30일에 1회)
+         * @description 규칙은 `NicknameRequest` 참고. 마지막 변경(users.nickname_changed_at) 후 30일이 지나야 다시 바꿀 수 있다.
+         *     가입 시 최초 설정은 이 제한에 들어가지 않는다(변경 이력이 없으면 바로 변경 가능). 정지(SUSPENDED) 회원도 가능.
+         *     현재와 같은 닉네임(대소문자까지 동일)이면 아무것도 바꾸지 않고 200.
+         *
+         */
+        patch: operations["changeNickname"];
         trace?: never;
     };
     "/api/me/social-accounts/{provider}": {
@@ -626,6 +650,11 @@ export interface components {
             /** Format: int64 */
             id: number;
             nickname: string;
+            /**
+             * Format: date-time
+             * @description 다음 닉네임 변경 가능 시각(nickname_changed_at + 30일). 변경 이력이 없으면 null(지금 변경 가능). 가입 시 최초 설정은 이력이 아니다
+             */
+            nicknameChangeableAt: string | null;
             /** @enum {string} */
             role: "USER" | "ADMIN";
             /** @enum {string} */
@@ -644,13 +673,26 @@ export interface components {
             /** Format: date-time */
             linkedAt: string;
         };
-        SignupRequest: {
+        /** @description 가입·변경 공통 닉네임 규칙.
+         *     - 형식: 2~12자, 한글·영문·숫자만(`^[가-힣a-zA-Z0-9]{2,12}$`). 위반 시 400 `VALIDATION_FAILED`(fieldErrors[nickname]).
+         *     - 중복 불가, 대소문자 무시(lower(nickname) 유니크). 위반 시 409 `NICKNAME_TAKEN`.
+         *     - 금지어 포함 검사(대소문자 무시). 예: 운영자, 관리자, 편잇, pyeonit, admin. 전체 목록은 백엔드 설정. 위반 시 422 `NICKNAME_FORBIDDEN`.
+         *      */
+        NicknameRequest: {
             nickname: string;
+        };
+        NicknameChangeTooSoonError: components["schemas"]["ErrorResponse"] & {
+            /**
+             * Format: date-time
+             * @description 다음 변경 가능 시각
+             */
+            nicknameChangeableAt: string;
         };
         SocialLinkStart: {
             authorizationUrl: string;
         };
         DevLoginRequest: {
+            /** @description 개발용이라 닉네임 규칙(금지어 등)을 검사하지 않는다 */
             nickname: string;
             /**
              * @default USER
@@ -1046,6 +1088,15 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
+        /** @description `NICKNAME_FORBIDDEN` 금지어(사칭 단어) 포함 */
+        NicknameForbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
         /** @description `PAYLOAD_TOO_LARGE` 업로드 크기 초과 */
         PayloadTooLarge: {
             headers: {
@@ -1159,7 +1210,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SignupRequest"];
+                "application/json": components["schemas"]["NicknameRequest"];
             };
         };
         responses: {
@@ -1175,7 +1226,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            /** @description `NICKNAME_TAKEN` 닉네임 중복, `ALREADY_REGISTERED` 이미 회원 */
+            /** @description `NICKNAME_TAKEN` 닉네임 중복(대소문자 무시), `ALREADY_REGISTERED` 이미 회원 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1184,6 +1235,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            422: components["responses"]["NicknameForbidden"];
         };
     };
     getMe: {
@@ -1226,6 +1278,54 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    changeNickname: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NicknameRequest"];
+            };
+        };
+        responses: {
+            /** @description 변경됨 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description `NICKNAME_TAKEN` 닉네임 중복(대소문자 무시) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            422: components["responses"]["NicknameForbidden"];
+            /** @description `NICKNAME_CHANGE_TOO_SOON` 마지막 변경 후 30일 이내 */
+            429: {
+                headers: {
+                    /** @description 변경 가능까지 초 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NicknameChangeTooSoonError"];
+                };
+            };
         };
     };
     startSocialLink: {
@@ -1284,7 +1384,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description `LAST_SOCIAL_ACCOUNT` 마지막 남은 로그인 수단은 해제 불가(탈퇴를 쓴다) */
+            /** @description `LAST_SOCIAL_ACCOUNT` 마지막 남은 로그인 수단은 해제 불가(탈퇴 DELETE /api/me 는 이 규칙과 무관하게 전부 삭제) */
             422: {
                 headers: {
                     [name: string]: unknown;

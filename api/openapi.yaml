@@ -12,7 +12,7 @@ info:
     - CSRF: Spring `CookieCsrfTokenRepository`. 서버가 `XSRF-TOKEN` 쿠키(HttpOnly 아님)를 내려주고,
       클라이언트는 GET/HEAD/OPTIONS 외 모든 요청에 같은 값을 `X-XSRF-TOKEN` 헤더로 보낸다.
       쿠키를 읽을 수 없는 환경이면 `GET /api/csrf` 응답 본문의 토큰을 쓴다. 불일치·누락은 403 `CSRF_INVALID`.
-    - 오리진: 개발 시 웹 http://localhost:3000 → 백엔드 http://localhost:8080 를 CORS(자격 증명 포함)로 직접 호출한다.
+    - 오리진: 개발 시 웹 http://localhost:3000 → 백엔드 http://localhost:8081 를 CORS(자격 증명 포함)로 직접 호출한다.
       허용 오리진은 `PYEONIT_CORS_ALLOWED_ORIGINS`(쉼표 구분)로 덮어쓴다. 운영도 웹과 API는 같은 사이트(eTLD+1)여야 한다(SameSite=Lax).
     - 공개 범위: 미인증 사용자는 공고·캘린더·학교·게시판 읽기(GET) 가능, 쓰기는 로그인 필요, `/api/admin/**` 는 ADMIN 전용.
     - 공개 API는 APPROVED 요강만 노출한다. 학교·학년도별로 가장 최근에 승인된(reviewedAt 최신) APPROVED 요강이 게시본이며,
@@ -22,10 +22,10 @@ info:
     - 이름 규칙: DB 컬럼은 snake_case, JSON 필드는 camelCase(`academic_year` → `academicYear`). enum 값은 DB 값 그대로 대문자.
     - 오류는 모두 `ErrorResponse` 형식. 상태 코드 사용 규칙과 코드 표는 README.
 
-    확장 필드: `x-owner`(구현 담당 B1|B2|B3), `x-profile`(해당 프로필에서만 존재),
+    확장 필드: `x-owner`(구현 담당 B1|B2|B3|B4), `x-profile`(해당 프로필에서만 존재),
     `x-suspended-blocked: true`(SUSPENDED 회원은 403 `ACCOUNT_SUSPENDED`), `x-implemented-by`(담당과 다른 작업이 이미 구현).
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:8081
     description: 로컬 백엔드
 tags:
   - name: auth
@@ -41,7 +41,7 @@ tags:
   - name: community
     description: 게시판·글·댓글 (B3)
   - name: admin-community
-    description: 관리자 신고·제재 (B3)
+    description: 관리자 신고·제재 (B4)
 
 paths:
   # ===================== 인증 (B1) =====================
@@ -109,7 +109,7 @@ paths:
       summary: 첫 로그인 닉네임 설정(가입 완료)
       description: |
         OAuth2 로그인은 됐지만 회원이 아닌 가입 대기 세션에서만 호출한다(users.nickname NOT NULL이므로 이 호출에서 users 행을 만든다).
-        닉네임 형식: 2~12자, 한글·영문·숫자·밑줄(`^[가-힣A-Za-z0-9_]{2,12}$`). 위반 시 400 `VALIDATION_FAILED`(fieldErrors[nickname]).
+        닉네임 규칙은 `NicknameRequest` 참고(PATCH /api/me/nickname 과 같다). 가입 시 최초 설정은 30일 변경 제한 대상이 아니며 제한 시계도 시작하지 않는다.
       security:
         - sessionCookie: []
           csrfHeader: []
@@ -117,7 +117,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SignupRequest' }
+            schema: { $ref: '#/components/schemas/NicknameRequest' }
       responses:
         '201':
           description: 가입 완료, 세션이 회원 세션으로 바뀜
@@ -131,10 +131,12 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
         '409':
-          description: '`NICKNAME_TAKEN` 닉네임 중복, `ALREADY_REGISTERED` 이미 회원'
+          description: '`NICKNAME_TAKEN` 닉네임 중복(대소문자 무시), `ALREADY_REGISTERED` 이미 회원'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          $ref: '#/components/responses/NicknameForbidden'
 
   /api/me:
     get:
@@ -161,7 +163,8 @@ paths:
       x-owner: B1
       summary: 회원 탈퇴
       description: |
-        status=WITHDRAWN, nickname=NULL, social_accounts 삭제, 세션 무효화. 작성한 글·댓글은 남고 작성자 닉네임이 null로 보인다.
+        LAST_SOCIAL_ACCOUNT 규칙과 무관하게 항상 가능하다. users.nickname=NULL, status=WITHDRAWN, withdrawn_at=now() 기록,
+        social_accounts 전부 삭제, 세션 무효화. 작성한 글·댓글은 남고 작성자 닉네임이 null로 보인다.
         같은 소셜 계정으로 다시 로그인하면 새 가입이다.
       security:
         - sessionCookie: []
@@ -173,6 +176,53 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /api/me/nickname:
+    patch:
+      operationId: changeNickname
+      tags: [auth]
+      x-owner: B1
+      summary: 닉네임 변경 (30일에 1회)
+      description: |
+        규칙은 `NicknameRequest` 참고. 마지막 변경(users.nickname_changed_at) 후 30일이 지나야 다시 바꿀 수 있다.
+        가입 시 최초 설정은 이 제한에 들어가지 않는다(변경 이력이 없으면 바로 변경 가능). 정지(SUSPENDED) 회원도 가능.
+        현재와 같은 닉네임(대소문자까지 동일)이면 아무것도 바꾸지 않고 200.
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NicknameRequest' }
+      responses:
+        '200':
+          description: 변경됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: '`NICKNAME_TAKEN` 닉네임 중복(대소문자 무시)'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          $ref: '#/components/responses/NicknameForbidden'
+        '429':
+          description: '`NICKNAME_CHANGE_TOO_SOON` 마지막 변경 후 30일 이내'
+          headers:
+            Retry-After:
+              description: 변경 가능까지 초
+              schema: { type: integer }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NicknameChangeTooSoonError' }
 
   /api/me/social-accounts/{provider}:
     post:
@@ -224,7 +274,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
-          description: '`LAST_SOCIAL_ACCOUNT` 마지막 남은 로그인 수단은 해제 불가(탈퇴를 쓴다)'
+          description: '`LAST_SOCIAL_ACCOUNT` 마지막 남은 로그인 수단은 해제 불가(탈퇴 DELETE /api/me 는 이 규칙과 무관하게 전부 삭제)'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
@@ -933,12 +983,12 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
-  # ===================== 관리자 신고·제재 (B3) =====================
+  # ===================== 관리자 신고·제재 (B4) =====================
   /api/admin/reports:
     get:
       operationId: listAdminReports
       tags: [admin-community]
-      x-owner: B3
+      x-owner: B4
       summary: 신고 목록 (createdAt 오름차순)
       security:
         - sessionCookie: []
@@ -970,7 +1020,7 @@ paths:
     post:
       operationId: handleReport
       tags: [admin-community]
-      x-owner: B3
+      x-owner: B4
       summary: 신고 처리
       description: RESOLVE → RESOLVED, DISMISS → DISMISSED. hideTarget=true 면 대상 글·댓글을 HIDDEN 으로(USER 대상은 무시, 제재는 별도 API).
       security:
@@ -1010,7 +1060,7 @@ paths:
     get:
       operationId: listSanctions
       tags: [admin-community]
-      x-owner: B3
+      x-owner: B4
       summary: 제재 목록 (createdAt 내림차순)
       security:
         - sessionCookie: []
@@ -1038,7 +1088,7 @@ paths:
     post:
       operationId: createSanction
       tags: [admin-community]
-      x-owner: B3
+      x-owner: B4
       summary: 제재 등록
       description: |
         WARNING: endsAt 없음, 회원 상태 변화 없음. SUSPEND: endsAt 필수(미래). BAN: endsAt 없음(무기한).
@@ -1070,7 +1120,7 @@ paths:
     post:
       operationId: releaseSanction
       tags: [admin-community]
-      x-owner: B3
+      x-owner: B4
       summary: 제재 해제
       description: endsAt=now 로 종료한다(이력 보존). 다른 활성 SUSPEND·BAN 이 없으면 회원 status=ACTIVE.
       security:
@@ -1185,6 +1235,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NicknameForbidden:
+      description: '`NICKNAME_FORBIDDEN` 금지어(사칭 단어) 포함'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     PayloadTooLarge:
       description: '`PAYLOAD_TOO_LARGE` 업로드 크기 초과'
       content:
@@ -1260,10 +1315,15 @@ components:
       enum: [KAKAO, GOOGLE]
     Me:
       type: object
-      required: [id, nickname, role, status, suspendedUntil, socialAccounts, createdAt]
+      required: [id, nickname, nicknameChangeableAt, role, status, suspendedUntil, socialAccounts, createdAt]
       properties:
         id: { type: integer, format: int64 }
         nickname: { type: string }
+        nicknameChangeableAt:
+          type: [string, 'null']
+          format: date-time
+          description: 다음 닉네임 변경 가능 시각(nickname_changed_at + 30일). 변경 이력이 없으면 null(지금 변경 가능). 가입 시 최초 설정은 이력이 아니다
+
         role:
           type: string
           enum: [USER, ADMIN]
@@ -1284,15 +1344,30 @@ components:
       properties:
         provider: { $ref: '#/components/schemas/SocialProvider' }
         linkedAt: { type: string, format: date-time }
-    SignupRequest:
+    NicknameRequest:
       type: object
+      description: |
+        가입·변경 공통 닉네임 규칙.
+        - 형식: 2~12자, 한글·영문·숫자만(`^[가-힣a-zA-Z0-9]{2,12}$`). 위반 시 400 `VALIDATION_FAILED`(fieldErrors[nickname]).
+        - 중복 불가, 대소문자 무시(lower(nickname) 유니크). 위반 시 409 `NICKNAME_TAKEN`.
+        - 금지어 포함 검사(대소문자 무시). 예: 운영자, 관리자, 편잇, pyeonit, admin. 전체 목록은 백엔드 설정. 위반 시 422 `NICKNAME_FORBIDDEN`.
       required: [nickname]
       properties:
         nickname:
           type: string
           minLength: 2
           maxLength: 12
-          pattern: '^[가-힣A-Za-z0-9_]{2,12}$'
+          pattern: '^[가-힣a-zA-Z0-9]{2,12}$'
+    NicknameChangeTooSoonError:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          required: [nicknameChangeableAt]
+          properties:
+            nicknameChangeableAt:
+              type: string
+              format: date-time
+              description: 다음 변경 가능 시각
     SocialLinkStart:
       type: object
       required: [authorizationUrl]
@@ -1306,6 +1381,7 @@ components:
       properties:
         nickname:
           type: string
+          description: 개발용이라 닉네임 규칙(금지어 등)을 검사하지 않는다
           minLength: 2
           maxLength: 12
         role:
