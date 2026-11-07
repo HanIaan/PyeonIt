@@ -1,4 +1,4 @@
-"""감시 루프: python -m pyeonit_crawler.monitor [--once] [--seed universities.yaml]"""
+"""감시 루프: python -m pyeonit_crawler.monitor [--once] [--seed universities.yaml] [--only 대학,...]"""
 
 import argparse
 import asyncio
@@ -14,7 +14,7 @@ from psycopg.rows import dict_row
 
 from ..download import download_pdf, page_links
 from ..gemini import GeminiExtractor, load_api_key
-from .core import due_sources, run_once
+from .core import due_sources, run_once, unknown_universities
 from .seed import load_seed
 
 log = logging.getLogger("pyeonit_crawler.monitor")
@@ -52,7 +52,7 @@ def connect(url: str):
 async def tick(args) -> int:
     with connect(args.database_url) as conn:
         now = datetime.now(UTC)
-        if not due_sources(conn, now):
+        if not due_sources(conn, now, args.only):
             return 0
         async with async_playwright() as pw:
             browser = await pw.chromium.launch()
@@ -61,7 +61,12 @@ async def tick(args) -> int:
                     await browser.new_context(), args.year, args.model
                 )
                 return await run_once(
-                    conn, fetcher, year=args.year, storage_dir=args.storage_dir, now=now
+                    conn,
+                    fetcher,
+                    year=args.year,
+                    storage_dir=args.storage_dir,
+                    now=now,
+                    only=args.only,
                 )
             finally:
                 await browser.close()
@@ -72,6 +77,11 @@ def main() -> None:
     parser.add_argument("--once", action="store_true", help="1회만 실행하고 종료")
     parser.add_argument(
         "--seed", type=Path, help="universities.yaml 경로. 시작 전 upsert"
+    )
+    parser.add_argument(
+        "--only",
+        type=lambda v: [n.strip() for n in v.split(",") if n.strip()],
+        help="확인할 대학만 쉼표로 지정. 예: 서강대학교,연세대학교(서울)",
     )
     parser.add_argument("--model", default="gemini-3.1-flash-lite")
     parser.add_argument(
@@ -89,6 +99,10 @@ def main() -> None:
     if args.seed:
         with connect(args.database_url) as conn:
             log.info("시드 %d개 대학 반영", load_seed(conn, args.seed))
+    if args.only:
+        with connect(args.database_url) as conn:
+            if unknown := unknown_universities(conn, args.only):
+                parser.error(f"--only: DB에 없는 대학 {unknown}")
     log.info("감시 시작: 대상 %d학년도", args.year)
     while True:
         try:

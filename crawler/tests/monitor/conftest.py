@@ -1,4 +1,4 @@
-"""실제 Postgres(docker compose)의 임시 스키마에 V1·V2 마이그레이션을 적용해 테스트한다."""
+"""실제 Postgres(docker compose)의 임시 스키마에 V1~V3 마이그레이션을 적용해 테스트한다."""
 
 import os
 import uuid
