@@ -153,7 +153,7 @@ export interface paths {
         /**
          * 소셜 계정 연결 시작
          * @description 세션에 연결 의도를 기록하고 이동할 인가 URL을 돌려준다(CSRF로 보호된 POST라 로그인 CSRF로 남의 계정이 연결되지 않는다).
-         *     웹은 `authorizationUrl` 로 이동하고, 완료 후 `{WEB}/settings?linked={provider}` 또는 `{WEB}/settings?linkError={code}` 로 돌아온다.
+         *     웹은 `authorizationUrl` 로 이동하고, 완료 후 `{WEB}/me?linked={provider}` 또는 `{WEB}/me?linkError={code}` 로 돌아온다.
          *     linkError: `SOCIAL_ACCOUNT_IN_USE`(다른 회원에 연결됨), `PROVIDER_ALREADY_LINKED`.
          *
          */
@@ -700,6 +700,11 @@ export interface components {
              * @enum {string}
              */
             role: "USER" | "ADMIN";
+            /**
+             * @description true 이면 status=SUSPENDED 인 테스트 회원으로 로그인한다(role 과 조합 가능). 정지 회원 UI 테스트용이며 dev 프로필 전용으로 운영에는 존재하지 않는다.
+             * @default false
+             */
+            suspended: boolean;
         };
         UniversitySummary: {
             /** Format: int64 */
