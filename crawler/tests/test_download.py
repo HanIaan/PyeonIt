@@ -215,3 +215,109 @@ def test_redirect_outside_allowlist_restores_certificate_validation():
     assert [call.kwargs["ignore_https_errors"] for call in calls] == [True, False]
     assert calls[1].args[0] == "https://outside.example/guide.pdf"
     assert all(call.kwargs["max_redirects"] == 0 for call in calls)
+
+
+def test_http_error_page_is_failure_not_no_guide():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyeonit_crawler.download import NoGuideError
+
+    page = MagicMock()
+    page.goto = AsyncMock(return_value=MagicMock(status=404))
+    page.close = AsyncMock()
+    context = MagicMock()
+    context.new_page = AsyncMock(return_value=page)
+    with pytest.raises(ValueError, match="HTTP 404") as error:
+        asyncio.run(download_pdf(context, "https://example.test/missing"))
+    assert not isinstance(error.value, NoGuideError)
+    page.close.assert_awaited_once()
+
+
+def test_extensionless_pdfjs_resource_and_protocol_relative_url():
+    assert pdf_candidates(
+        [
+            Link(
+                "",
+                "https://example.test/pdfJS/web/viewer.html?file=%2F%2Fexample.test%2Fajax%2FFileView.do%3Fid%3D1",
+            ),
+            Link("PDF 다운받기", "https://example.test/cms/etcResourceDown.do?key=123"),
+        ],
+        2026,
+    ) == [
+        "https://example.test/ajax/FileView.do?id=1",
+        "https://example.test/cms/etcResourceDown.do?key=123",
+    ]
+
+
+def test_guide_viewer_beats_unrelated_upload_timestamp():
+    assert (
+        pdf_candidates(
+            [
+                Link("PDF", "https://example.test/upload/info/20260917113840.PDF"),
+                Link(
+                    "",
+                    "https://example.test/pdfViewer/web/viewer.html?file=/upload/20251128084620.PDF",
+                ),
+                Link("2027학년도 정시 PDF", "https://example.test/2027jungsi.pdf"),
+            ],
+            2026,
+        )[0]
+        == "https://example.test/upload/20251128084620.PDF"
+    )
+
+
+def test_detached_child_frame_preserves_main_document_links():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from playwright.async_api import Error
+
+    from pyeonit_crawler.download import page_links
+
+    main, child = MagicMock(), MagicMock()
+    main.eval_on_selector_all = AsyncMock(
+        return_value=[
+            {"title": "PDF", "url": "https://example.test/guide.pdf", "onclick": ""}
+        ]
+    )
+    child.eval_on_selector_all = AsyncMock(side_effect=Error("detached"))
+    page = MagicMock(frames=[main, child], main_frame=main)
+    assert asyncio.run(page_links(page)) == [
+        Link("PDF", "https://example.test/guide.pdf")
+    ]
+
+
+def test_js_only_pdf_download_button(tmp_path):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyeonit_crawler.download import click_pdf_download
+
+    content = b"%PDF-js-download"
+    path = tmp_path / "download.pdf"
+    path.write_bytes(content)
+    download = MagicMock(url="https://example.test/file?id=123")
+    download.path = AsyncMock(return_value=path)
+    pending = MagicMock()
+
+    async def downloaded():
+        return download
+
+    async def run():
+        pending.value = downloaded()
+        manager = MagicMock()
+        manager.__aenter__ = AsyncMock(return_value=pending)
+        manager.__aexit__ = AsyncMock(return_value=False)
+        button = MagicMock()
+        button.inner_text = AsyncMock(return_value="PDF 다운로드")
+        button.click = AsyncMock()
+        buttons = MagicMock()
+        buttons.count = AsyncMock(return_value=1)
+        buttons.nth.return_value = button
+        page = MagicMock()
+        page.locator.return_value.filter.return_value = buttons
+        page.expect_download.return_value = manager
+        result = await click_pdf_download(page, 2026)
+        assert result.content == content
+        assert result.sha256 == hashlib.sha256(content).hexdigest()
+        button.click.assert_awaited_once()
+
+    asyncio.run(run())

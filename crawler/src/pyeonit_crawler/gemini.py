@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -86,11 +87,31 @@ class GeminiExtractor:
                     "".join(p.get("text", "") for p in parts if not p.get("thought"))
                 )
             except (httpx.TimeoutException, httpx.HTTPStatusError) as exc:
-                retryable = (
-                    isinstance(exc, httpx.TimeoutException)
-                    or exc.response.status_code == 503
-                )
+                delay = 2**attempt
+                retryable = isinstance(exc, httpx.TimeoutException)
+                if isinstance(exc, httpx.HTTPStatusError):
+                    retryable = exc.response.status_code == 503
+                    if exc.response.status_code == 429:
+                        delay = quota_retry_delay(exc.response)
+                        retryable = delay is not None
                 if not retryable or attempt == 3:
                     raise
-                self.sleep(2**attempt)
+                self.sleep(delay)
         raise RuntimeError("unreachable")
+
+
+def quota_retry_delay(response: httpx.Response) -> float | None:
+    """명시된 단기 할당량 대기만 재시도한다. 일일 제한/무제한 대기는 금지."""
+    try:
+        details = response.json().get("error", {}).get("details", [])
+    except (ValueError, AttributeError):
+        return None
+    violations = [v for d in details for v in d.get("violations", [])]
+    if any("PerDay" in v.get("quotaId", "") for v in violations):
+        return None
+    for detail in details:
+        if match := re.fullmatch(r"(\d+(?:\.\d+)?)s", detail.get("retryDelay", "")):
+            delay = float(match[1])
+            if 0 < delay <= 60:
+                return delay
+    return None

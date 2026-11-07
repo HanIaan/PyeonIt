@@ -81,3 +81,63 @@ def test_timeout_exhausts_after_three_retries():
             )
     assert len(calls) == 4
     assert delays == [1, 2, 4]
+
+
+def test_short_quota_limit_honors_retry_info():
+    calls, delays = [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(
+                429,
+                json={
+                    "error": {
+                        "details": [
+                            {
+                                "violations": [
+                                    {"quotaId": "InputTokensPerModelPerMinute"}
+                                ]
+                            },
+                            {"retryDelay": "55s"},
+                        ]
+                    }
+                },
+            )
+        return httpx.Response(
+            200, json={"candidates": [{"content": {"parts": [{"text": "{}"}]}}]}
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        assert (
+            GeminiExtractor("fake", client=client, sleep=delays.append).extract(b"pdf")
+            == {}
+        )
+    assert len(calls) == 2
+    assert delays == [55]
+
+
+@pytest.mark.parametrize(
+    "quota_id,delay", [("RequestsPerDay", "55s"), ("TokensPerMinute", "3600s")]
+)
+def test_daily_or_long_quota_limit_is_not_retried(quota_id, delay):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(
+            429,
+            json={
+                "error": {
+                    "details": [
+                        {"violations": [{"quotaId": quota_id}]},
+                        {"retryDelay": delay},
+                    ]
+                }
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            GeminiExtractor("fake", client=client, sleep=lambda _: None).extract(b"pdf")
+    assert len(calls) == 1
