@@ -1,0 +1,10 @@
+.gradle
+build
+.git
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.jks
+*.log
