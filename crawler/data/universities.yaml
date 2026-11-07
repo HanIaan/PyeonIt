@@ -1,0 +1,477 @@
+# 2026-11-08 공식 입학처를 Playwright Chromium으로 탐색·확인.
+# 최종 범위: 서울·경기·인천 일반 종합대학. 원격·전문·교육·신학·종교·예술·체육 특화 제외.
+# 통합 모집요강은 학교당 한 번 수집하고 region은 대표 수도권 소재지로 기재한다.
+# 별도 입학처/요강을 운영하는 캠퍼스는 분리한다. 원문의 타지역 캠퍼스 행은 임의 삭제하지 않는다.
+
+- name: 서강대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.sogang.ac.kr/enter/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://admission.sogang.ac.kr/enter/html/transfer/guide.asp
+- name: 성균관대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.skku.edu/admission/html/transfer/notice.html
+    - kind: GUIDE_PAGE
+      url: https://admission.skku.edu/admission/html/transfer/guide.html
+- name: 연세대학교
+  campus: "서울"
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.yonsei.ac.kr/seoul/admission/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://admission.yonsei.ac.kr/seoul/admission/html/transfer/guide.asp
+- name: 가천대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.gachon.ac.kr/admission/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://admission.gachon.ac.kr/admission/html/transfer/guide1.asp
+- name: 가톨릭대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.catholic.ac.kr/submenu.do?menuurl=shTyaGgSAy79vI5n2yB%2fhA%3d%3d&
+    - kind: GUIDE_PAGE
+      url: https://ipsi.catholic.ac.kr/submenu.do?menuurl=lktmA6TpgpjUpNE2tkO4bw%3d%3d&
+- name: 강남대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.kangnam.ac.kr/doumi/notice.htm?bbsid=notice&ctg_cd=transfer&keyword=&mode=list&page=1&skey=
+    - kind: GUIDE_PAGE
+      url: https://admission.kangnam.ac.kr/jeonhyung/yogang.htm?ctg_cd=transfer
+- name: 강서대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://entrance.gangseo.ac.kr/kcui/homeService?menuCode=MC0801
+    - kind: GUIDE_PAGE
+      url: https://entrance.gangseo.ac.kr/kcui/homeService?menuCode=MC0500
+- name: 건국대학교
+  campus: "서울"
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.konkuk.ac.kr/admission/37888/subview.do
+    - kind: GUIDE_PAGE
+      url: https://admission.konkuk.ac.kr/admission/37889/subview.do
+- name: 경기대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://enter.kyonggi.ac.kr/cms/FR_CON/index.do?MENU_ID=210
+    - kind: GUIDE_PAGE
+      url: https://enter.kyonggi.ac.kr/cms/FR_CON/index.do?MENU_ID=160
+- name: 경동대학교
+  campus: "메트로폴"
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://www.kduniv.ac.kr/iphak/CMS/Board/Board.do?mCode=MN034
+    - kind: GUIDE_PAGE
+      url: https://www.kduniv.ac.kr/iphak/CMS/Contents/Contents.do?mCode=MN036
+- name: 경희대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://iphak.khu.ac.kr/submenu.do?menuurl=cRn%2faEwx6apTQh9HEMyZTw%3d%3d&
+    - kind: GUIDE_PAGE
+      url: https://iphak.khu.ac.kr/submenu.do?menuurl=pNIJTWxI%2b8B8m%2bUBBAchHA%3d%3d&
+- name: 고려대학교
+  campus: "서울"
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://oku.korea.ac.kr/oku/cms/FR_CON/index.do?MENU_ID=1770
+    - kind: GUIDE_PAGE
+      url: https://oku.korea.ac.kr/oku/cms/FR_CON/index.do?MENU_ID=660
+- name: 광운대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://iphak.kw.ac.kr/mojib/mojib.php?m_type=PYEONIP
+- name: 국민대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.kookmin.ac.kr/transfer/notice.php
+    - kind: GUIDE_PAGE
+      url: https://admission.kookmin.ac.kr/transfer/application.php
+- name: 단국대학교
+  campus: "죽전"
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.dankook.ac.kr/jukjeon/notice/list.html?bbsid=juk_info&ctg_cd=05
+    - kind: GUIDE_PAGE
+      url: https://ipsi.dankook.ac.kr/jukjeon/doumi/mojip.html?bbsid=juk_paper&ctg_cd=05&kw=03952E
+- name: 대진대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://admission.daejin.ac.kr/submenu.do?menuurl=iR4AzM40LcXsoQSN2OSCIg%3d%3d&
+- name: 덕성여자대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://enter.duksung.ac.kr/notice/?m_type=PYEONIP
+    - kind: GUIDE_PAGE
+      url: https://enter.duksung.ac.kr/mojib/?m_type=PYEONIP
+- name: 동국대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.dongguk.edu/admission/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://ipsi.dongguk.edu/admission/html/transfer/guide.asp
+- name: 동덕여자대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.dongduk.ac.kr/ipsi/contents/transfer-notice.do?gotoMenuNo=transfer-notice
+    - kind: GUIDE_PAGE
+      url: https://ipsi.dongduk.ac.kr/ipsi/contents/transfer-viewer.do?gotoMenuNo=transfer-viewer
+- name: 동양대학교
+  campus: "동두천"
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.dyu.ac.kr/information/information_01/
+- name: 명지대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://iphak.mju.ac.kr/pages/?p=25&b=B_1_1&cate=%ED%8E%B8%EC%9E%85%ED%95%99
+    - kind: GUIDE_PAGE
+      url: https://iphak.mju.ac.kr/pages/?p=26&mj=04
+- name: 삼육대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://ipsi.syu.ac.kr/2016_syu/pages/index.asp?p=20&mj=04
+- name: 상명대학교
+  campus: "서울"
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: http://admission.smu.ac.kr/_seoul/board/bbs.html?bbsid=seoul_notice&ctg_cd=pyunip
+    - kind: GUIDE_PAGE
+      url: https://admission.smu.ac.kr/_seoul/iphak/mojip.html?bbsid=seoul_mojib&ctg_cd=pyunip
+- name: 서경대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://go.skuniv.ac.kr/index.php?mid=notice&category=184
+    - kind: GUIDE_PAGE
+      url: https://go.skuniv.ac.kr/index.php?mid=transfer_admission_guide
+- name: 서울과학기술대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.seoultech.ac.kr/cms/FR_CON/index.do?MENU_ID=380&CONTENTS_NO=2
+    - kind: GUIDE_PAGE
+      url: https://admission.seoultech.ac.kr/cms/FR_CON/index.do?MENU_ID=290
+- name: 서울대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.snu.ac.kr/transfer/notice?sc=y
+    - kind: GUIDE_PAGE
+      url: https://admission.snu.ac.kr/transfer/transfer/guide
+- name: 서울시립대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://admission.uos.ac.kr/admissionNew/html/pyunib/info.do?menuid=2002003001000000000
+- name: 서울여자대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.swu.ac.kr/bbs/board.php?bo_table=notice&sca=%ED%8E%B8%EC%9E%85%ED%95%99&sub_ck=1
+    - kind: GUIDE_PAGE
+      url: https://admission.swu.ac.kr/bbs/board.php?bo_table=flashpaper&sca=%ED%8E%B8%EC%9E%85%ED%95%99&sub_ck=1
+- name: 성결대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.sungkyul.ac.kr/10000015
+    - kind: GUIDE_PAGE
+      url: https://ipsi.sungkyul.ac.kr/10000016
+- name: 성공회대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://enter.skhu.ac.kr/bbs/enter/89/artclList.do?bbsClSeq=214&layout=unknown
+    - kind: GUIDE_PAGE
+      url: https://enter.skhu.ac.kr/enter/3075/subview.do
+- name: 성신여자대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://ipsi.sungshin.ac.kr/guide/recruit.htm?ctg_cd=transfer
+- name: 세종대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.sejong.ac.kr/ipsi/transfer/notice.do
+    - kind: GUIDE_PAGE
+      url: https://ipsi.sejong.ac.kr/ipsi/transfer/recruitment-guidelines.do
+- name: 수원대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://ipsi.suwon.ac.kr/guide/transfer
+- name: 숙명여자대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.sookmyung.ac.kr/admission/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://admission.sookmyung.ac.kr/admission/html/transfer/guide.asp
+- name: 숭실대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://iphak.ssu.ac.kr/board/notice_list.asp?page=1&srchoption=&keyword=&flag=3&page_no=1_4_1
+    - kind: GUIDE_PAGE
+      url: https://iphak.ssu.ac.kr/mojip/req.asp?flag=3&page_no=1_4_2
+- name: 신한대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.shinhan.ac.kr/sub/bbs/testnote.do?bbsId=BBSMSTR_000000000000&cateId=4&relateImagePath=svis_4
+    - kind: GUIDE_PAGE
+      url: https://ipsi.shinhan.ac.kr/adm/info.do?cateId=4&bbsId=BBSMSTR_000000000051&relateImagePath=svis_4
+- name: 아주대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://www.iajou.ac.kr/notice/?m_type=PYEONIP
+    - kind: GUIDE_PAGE
+      url: https://www.iajou.ac.kr/mojib/?m_type=PYEONIP
+- name: 안양대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://enter.anyang.ac.kr/10000021
+    - kind: GUIDE_PAGE
+      url: https://enter.anyang.ac.kr/10000022
+- name: 용인대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.yongin.ac.kr/pyunip/notice_list.do
+    - kind: GUIDE_PAGE
+      url: https://ipsi.yongin.ac.kr/pyunip/guide.do
+- name: 을지대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://admission.eulji.ac.kr/?menuno=2735
+- name: 이화여자대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.ewha.ac.kr/admission/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://admission.ewha.ac.kr/admission/html/transfer/guide.asp
+- name: 인천가톨릭대학교
+  campus: ""
+  region: INCHEON
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.iccu.ac.kr/bbs/board.php?bo_table=notice&sca=%ED%8E%B8%EC%9E%85%ED%95%99
+    - kind: GUIDE_PAGE
+      url: https://admission.iccu.ac.kr/admission/php/transfer_a.php
+- name: 인천대학교
+  campus: ""
+  region: INCHEON
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.inu.ac.kr/submenu.do?menuurl=OugLlhPCudzQcX0qRXyEuQ%3d%3d&
+    - kind: GUIDE_PAGE
+      url: https://admission.inu.ac.kr/submenu.do?menuurl=hB8GYKGYSI7BBlNJFDXa%2bQ%3d%3d&
+- name: 인하대학교
+  campus: ""
+  region: INCHEON
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.inha.ac.kr/cms/FR_CON/index.do?MENU_ID=210
+    - kind: GUIDE_PAGE
+      url: https://admission.inha.ac.kr/cms/FR_CON/index.do?MENU_ID=620
+- name: 중앙대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://admission.cau.ac.kr/submenu.do?menuurl=8Dv5j3LJonuTK%2BIWKKbkOQ%3D%3D
+- name: 차의과학대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://admission.cha.ac.kr/%ed%8e%b8%ec%9e%85%ed%95%99/%ed%8e%b8%ec%9e%85-%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad/
+    - kind: GUIDE_PAGE
+      url: https://admission.cha.ac.kr/%ed%8e%b8%ec%9e%85%ed%95%99/%eb%aa%a8%ec%a7%91%ec%9a%94%ea%b0%95/
+- name: 청운대학교
+  campus: "인천"
+  region: INCHEON
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://enter.chungwoon.ac.kr/enter/contents.do?key=112
+- name: 평택대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://entrance.ptu.ac.kr/entrance/3665/subview.do
+- name: 한경국립대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://ipsi.hknu.ac.kr/mojib/mojib.php?m_type=PYEONIP
+- name: 한국공학대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://iphak.tukorea.ac.kr/transfer/guide.htm
+- name: 한국외국어대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://adms.hufs.ac.kr/cms/FrCon/index.do?MENU_ID=270
+    - kind: GUIDE_PAGE
+      url: https://adms.hufs.ac.kr/cms/FrCon/index.do?MENU_ID=230
+- name: 한국항공대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ibhak.kau.ac.kr/admission/html/guide/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://ibhak.kau.ac.kr/admission/html/transfer/guide.asp
+- name: 한성대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://enter.hansung.ac.kr/?m1=menu07%25&m2=sub04%25&board=entrance_helper%2Fnotice%25
+    - kind: GUIDE_PAGE
+      url: https://enter.hansung.ac.kr/?m1=menu03%25&m2=sub00%25&board=application%25&application=8%25
+- name: 한세대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://ipsi.hansei.ac.kr/view.do?no=1096&sv1=%ED%8E%B8%EC%9E%85%ED%95%99
+    - kind: GUIDE_PAGE
+      url: https://ipsi.hansei.ac.kr/view.do?no=1083
+- name: 한신대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://ent.hs.ac.kr/ipsi/pages/?p=12&mj=03
+- name: 한양대학교
+  campus: "서울"
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://go.hanyang.ac.kr/web/notice/notice_list.do?m_type=PYEONIP
+    - kind: GUIDE_PAGE
+      url: https://go.hanyang.ac.kr/web/mojib/mojib.do?m_type=PYEONIP
+- name: 한양대학교
+  campus: "ERICA"
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://goerica.hanyang.ac.kr/admission/html/transfer/notice.asp
+    - kind: GUIDE_PAGE
+      url: https://goerica.hanyang.ac.kr/admission/html/transfer/guide.asp
+- name: 협성대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://iphak.uhs.ac.kr/ipsi/board/notice/list.do
+    - kind: GUIDE_PAGE
+      url: https://iphak.uhs.ac.kr/pyuniphak/mojip.do
+- name: 화성의과학대학교
+  campus: ""
+  region: GYEONGGI
+  sources:
+    - kind: GUIDE_PAGE
+      url: https://www.hsmu.ac.kr/admission/contents/AMS30100000.do
+    - kind: NOTICE_BOARD
+      url: https://www.hsmu.ac.kr/admission/contents/AMS40100000.do
+
+- name: 국립한국교통대학교
+  campus: "의왕"
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://www.ut.ac.kr/cop/bbs/BBSMSTR_000000000661/selectBoardList.do
+    - kind: GUIDE_PAGE
+      url: https://www.ut.ac.kr/prog/rcrit/ipsi/sub03_01/view.do?cntNo=36
+
+# 미확인 학교 (편입학 미모집을 뜻하지 않음):
+# 홍익대학교(서울): 공식 입학처가 STCLab BotManager 차단 페이지로 이동하여 Playwright로 편입 메뉴·요강 검증 불가.
+#   탐색 주소: https://admission.hongik.ac.kr/
+# 부분 확인: 다음 학교는 고정 요강 또는 편입 전용 공지 메뉴가 없어 확인된 공식 메뉴만 기재함.
+# 광운대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 대진대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 동양대학교: 편입 고정 모집요강 URL 미확인; 공식 입학 공지 게시판으로 수집.
+# 삼육대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 서울시립대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 성신여자대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 수원대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 을지대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 중앙대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 청운대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 평택대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 한경국립대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 한국공학대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
+# 한신대학교: 편입 전용 공지 게시판 URL 미확인; 고정 요강 페이지로 수집.
