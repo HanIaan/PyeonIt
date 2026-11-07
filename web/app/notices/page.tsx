@@ -1,3 +1,10 @@
+import { Suspense } from "react";
+import NoticesView from "@/components/notices/notices-view";
+
 export default function Page() {
-  return <h1 className="text-2xl font-bold">공고</h1>;
+  return (
+    <Suspense fallback={<p role="status">공고를 불러오는 중…</p>}>
+      <NoticesView />
+    </Suspense>
+  );
 }
