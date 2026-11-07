@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/pyeonit}
+    username: ${DB_USERNAME:pyeonit}
+    password: ${DB_PASSWORD:pyeonit}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
