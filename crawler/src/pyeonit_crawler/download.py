@@ -3,6 +3,7 @@
 import hashlib
 import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urljoin, urlsplit
 
@@ -127,6 +128,48 @@ async def page_links(page: Page) -> list[Link]:
     return list(dict.fromkeys(links))
 
 
+class StaticLinkParser(HTMLParser):
+    """공식 서버가 제공한 HTML 앵커만 파싱한다. 스크립트는 실행하지 않는다."""
+
+    def __init__(self, base_url: str):
+        super().__init__()
+        self.base_url = base_url
+        self.links = []
+        self.anchor = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            attrs = dict(attrs)
+            self.anchor = [attrs.get("href", ""), attrs.get("title", ""), []]
+
+    def handle_data(self, data):
+        if self.anchor is not None:
+            self.anchor[2].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self.anchor is not None:
+            href, title, chunks = self.anchor
+            url = urljoin(self.base_url, href)
+            if href and urlsplit(url).scheme in {"http", "https"}:
+                self.links.append(Link(("".join(chunks) + " " + title).strip(), url))
+            self.anchor = None
+
+
+async def discover_links(
+    context: BrowserContext, page: Page, requested_url: str
+) -> list[Link]:
+    links = await page_links(page)
+    # 홍익대는 공식 HTML에 PDF 첨부가 있지만 실행된 스크립트가 외부 화면으로 이동한다.
+    # 요청한 공개 원문 HTML의 앵커를 읽어 공식 첨부 주소를 보완한다.
+    if not links or urlsplit(page.url).hostname != urlsplit(requested_url).hostname:
+        response = await fetch_attachment(context, requested_url, requested_url)
+        if response.ok and "html" in response.headers.get("content-type", ""):
+            parser = StaticLinkParser(requested_url)
+            parser.feed(await response.text())
+            links.extend(parser.links)
+    return list(dict.fromkeys(links))
+
+
 async def click_pdf_download(page: Page, year: int) -> DownloadedPDF | None:
     """JS 전용 첨부는 화면의 PDF 다운로드 버튼만 제한적으로 클릭한다."""
     buttons = page.locator("a, button").filter(has_text=re.compile(r"PDF\s*다운", re.I))
@@ -166,7 +209,7 @@ async def download_pdf(
             and response.status >= 400
         ):
             raise ValueError(f"출처 페이지 HTTP {response.status}")
-        links = await page_links(page)
+        links = await discover_links(context, page, page_url)
         candidates = pdf_candidates(links, year)
         if not candidates:
             # 공지 목록에서는 엄격한 제목 필터를 통과한 글만 따라간다.
@@ -174,7 +217,9 @@ async def download_pdf(
                 if str(year) not in link.title or link.url == page.url:
                     continue
                 await page.goto(link.url, wait_until="load", timeout=60000)
-                candidates.extend(pdf_candidates(await page_links(page), year))
+                candidates.extend(
+                    pdf_candidates(await discover_links(context, page, link.url), year)
+                )
         if not candidates:
             if downloaded := await click_pdf_download(page, year):
                 return downloaded

@@ -322,3 +322,43 @@ def test_js_only_pdf_download_button(tmp_path):
         button.click.assert_awaited_once()
 
     asyncio.run(run())
+
+
+def test_static_official_html_attachment_is_found_after_script_redirect(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from pyeonit_crawler import download
+
+    requested = "https://www.hongik.ac.kr/kr/admission/recruitment-transfer.do?mode=view&articleNo=145569"
+    page = MagicMock(
+        url="https://cdn-botmanager.stclab.com/sample/challenge/index.html"
+    )
+    monkeypatch.setattr(download, "page_links", AsyncMock(return_value=[]))
+    response = MagicMock(
+        status=200, ok=True, headers={"content-type": "text/html;charset=UTF-8"}
+    )
+    response.text = AsyncMock(
+        return_value="""<a href="?mode=download&amp;articleNo=145569&amp;attachNo=84807" title="다운로드">PDF</a>
+<a href="?mode=download&amp;articleNo=145569&amp;attachNo=84808">HWP</a>
+<a href="javascript:alert(1)">PDF</a>"""
+    )
+    context = MagicMock()
+    context.request.get = AsyncMock(return_value=response)
+    links = asyncio.run(download.discover_links(context, page, requested))
+    assert pdf_candidates(links, 2026) == [
+        "https://www.hongik.ac.kr/kr/admission/recruitment-transfer.do?mode=download&articleNo=145569&attachNo=84807"
+    ]
+    assert context.request.get.call_args.args[0] == requested
+    assert not context.request.get.call_args.kwargs["ignore_https_errors"]
+
+
+def test_static_parser_handles_nested_anchor_text_and_relative_links():
+    from pyeonit_crawler.download import StaticLinkParser
+
+    parser = StaticLinkParser("https://example.test/guide/")
+    parser.feed(
+        '<a href="files/guide.pdf"><span>2026 편입</span> 모집요강</a><script>not_an_anchor()</script>'
+    )
+    assert parser.links == [
+        Link("2026 편입 모집요강", "https://example.test/guide/files/guide.pdf")
+    ]
