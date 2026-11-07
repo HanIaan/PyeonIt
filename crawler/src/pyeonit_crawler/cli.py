@@ -12,8 +12,14 @@ from urllib.parse import urlsplit
 import httpx
 from playwright.async_api import async_playwright
 
-from .download import download_pdf
-from .gemini import GeminiExtractor, load_api_key
+from .download import DownloadedPDF, download_pdf
+from .gemini import (
+    DEFAULT_MODEL,
+    MODEL_CHAIN,
+    GeminiExtractor,
+    load_api_key,
+    quota_metadata,
+)
 from .validation import validate_totals
 
 DEFAULT_UNIVERSITIES = Path(__file__).resolve().parents[2] / "data/universities.yaml"
@@ -123,6 +129,12 @@ def matches_request(data: dict, school: str, year: int) -> bool:
     )
 
 
+class WrongDocumentError(ValueError):
+    def __init__(self, data: dict):
+        super().__init__("잘못된 문서")
+        self.data = data
+
+
 async def extract_validated(extractor, content: bytes, school: str, year: int):
     """합계 불일치만 동일 PDF로 최대 2회 재추출한다. 최초 통과 즉시 채택."""
     attempts = []
@@ -130,6 +142,8 @@ async def extract_validated(extractor, content: bytes, school: str, year: int):
     for _ in range(3):
         try:
             data = await asyncio.to_thread(extractor.extract, content)
+            if data.get("문서종류") != "편입학 모집요강":
+                raise WrongDocumentError(data)
             if not matches_request(data, school, year):
                 raise ValueError("추출된 학교 또는 학년도가 요청과 다릅니다")
             validation = validate_totals(data)
@@ -144,26 +158,47 @@ async def extract_validated(extractor, content: bytes, school: str, year: int):
             if selected is None:
                 raise
             # 이미 얻은 결과는 후속 재추출 오류로 버리지 않는다.
-            attempts.append({"error_type": type(exc).__name__})
+            error = {"error_type": type(exc).__name__}
+            if isinstance(exc, httpx.HTTPStatusError):
+                error.update(
+                    error_code=safe_error_code(exc),
+                    http_status=exc.response.status_code,
+                )
+            if (
+                isinstance(exc, httpx.HTTPStatusError)
+                and exc.response.status_code == 429
+            ):
+                if metadata := quota_metadata(exc.response):
+                    error["quota"] = metadata
+            attempts.append(error)
+            if (
+                isinstance(exc, httpx.HTTPStatusError)
+                and exc.response.status_code == 429
+            ):
+                break
     return *selected, attempts
 
 
 def reusable_result(args, slug: str, entry: dict) -> dict | None:
-    """같은 설정·원본 해시의 검증 완료 JSON만 재사용한다(미통과 판정도 유지)."""
-    if not getattr(args, "resume", False):
-        return None
+    """같은 PDF의 통과 결과만 자동 재사용한다. lite 결과는 항상 재추출한다."""
     try:
         result = json.loads((args.output / f"{slug}-{args.year}.json").read_text())
         source = result["source"]
         data = result["data"]
+        if not isinstance(data, dict) or not isinstance(result.get("validation"), dict):
+            return None
         if (
-            result["schema_version"] != 2
+            result["schema_version"] not in {3, 4}
             or source.get("year") != args.year
-            or source["model"] != args.model
-            or any(
-                source.get(key) != entry[key]
-                for key in ("name", "campus", "region", "sources")
+            or result["validation"]["status"] != "passed"
+            or not any(
+                source.get("model", "").startswith(model) for model in MODEL_CHAIN
             )
+            or "lite" in source.get("model", "").lower()
+            or any(
+                source.get(key) != entry[key] for key in ("name", "campus", "region")
+            )
+            or data.get("문서종류") != "편입학 모집요강"
             or not matches_request(data, entry["name"], args.year)
             or source["sha256"]
             != hashlib.sha256(
@@ -185,9 +220,138 @@ def safe_error_code(exc: Exception) -> str:
         return match[1]
     if "추출된 학교 또는 학년도가 요청과 다릅니다" == str(exc):
         return "IDENTITY_MISMATCH"
+    if str(exc) == "잘못된 문서":
+        return "WRONG_DOCUMENT"
     if "this._engines.set" in str(exc):
         return "PAGE_SCRIPT_CONFLICT"
     return type(exc).__name__
+
+
+async def extract_with_models(
+    extractors: dict, content: bytes, school: str, year: int, exhausted: dict
+) -> dict:
+    """429 또는 검증 미통과만 다음 모델로 넘긴다. 통과 결과만 채택한다."""
+    model_attempts = []
+    diagnostic = None
+    for model, extractor in extractors.items():
+        if model in exhausted:
+            model_attempts.append(
+                {
+                    "requested_model": model,
+                    "status": "QUOTA_WAIT",
+                    "quota": exhausted[model],
+                    "skipped": True,
+                }
+            )
+            continue
+        try:
+            data, validation, attempts = await extract_validated(
+                extractor, content, school, year
+            )
+            actual_model = getattr(data, "model_version", model)
+            trial = {
+                "requested_model": model,
+                "model": actual_model,
+                "status": validation["status"],
+                "extraction_attempts": attempts,
+            }
+            model_attempts.append(trial)
+            for attempt in attempts:
+                if attempt.get("http_status") == 429:
+                    exhausted[model] = attempt.get("quota", [])
+            result = {
+                "data": data,
+                "validation": validation,
+                "extraction_attempts": attempts,
+                "model": actual_model,
+                "requested_model": model,
+            }
+            if validation["status"] == "passed":
+                return {
+                    **result,
+                    "status": "passed",
+                    "adopted": True,
+                    "model_attempts": model_attempts,
+                }
+            terminal = next(
+                (
+                    a
+                    for a in reversed(attempts)
+                    if (a.get("http_status") is not None and a["http_status"] != 429)
+                    or a.get("error_type")
+                    in {
+                        "TimeoutException",
+                        "ReadTimeout",
+                        "ConnectTimeout",
+                        "WriteTimeout",
+                        "PoolTimeout",
+                    }
+                ),
+                None,
+            )
+            if terminal is not None:
+                return {
+                    **result,
+                    **terminal,
+                    "status": "error",
+                    "adopted": False,
+                    "model_attempts": model_attempts,
+                }
+            if diagnostic is None:
+                diagnostic = result
+        except Exception as exc:
+            trial = {
+                "requested_model": model,
+                "status": "error",
+                "error_type": type(exc).__name__,
+                "error_code": safe_error_code(exc),
+            }
+            if isinstance(exc, httpx.HTTPStatusError):
+                trial["http_status"] = exc.response.status_code
+                if exc.response.status_code == 429:
+                    exhausted[model] = quota_metadata(exc.response)
+                    trial.update(status="QUOTA_WAIT", quota=exhausted[model])
+                    model_attempts.append(trial)
+                    continue
+            if isinstance(exc, WrongDocumentError):
+                trial["model"] = getattr(exc.data, "model_version", model)
+            model_attempts.append(trial)
+            # 503/타임아웃/잘못된 문서는 체인 전환하지 않는다.
+            return {
+                **trial,
+                "status": "error",
+                "adopted": False,
+                "model_attempts": model_attempts,
+                "model": trial.get("model", model),
+                "requested_model": model,
+                **(
+                    {
+                        "data": exc.data,
+                        "validation": {
+                            "status": "failed",
+                            "passed": False,
+                            "reason": "WRONG_DOCUMENT",
+                        },
+                    }
+                    if isinstance(exc, WrongDocumentError)
+                    else {}
+                ),
+            }
+    status = (
+        "QUOTA_WAIT"
+        if all(model in exhausted for model in extractors)
+        else diagnostic["validation"]["status"]
+    )
+    return {
+        **(diagnostic or {}),
+        "status": status,
+        "adopted": False,
+        "model_attempts": model_attempts,
+        "model": (diagnostic or {}).get("model", list(extractors)[-1]),
+        "requested_model": (diagnostic or {}).get(
+            "requested_model", list(extractors)[-1]
+        ),
+    }
 
 
 async def backfill(args: argparse.Namespace) -> int:
@@ -195,7 +359,16 @@ async def backfill(args: argparse.Namespace) -> int:
     selected = args.schools or list(schools)
     if unknown := set(selected) - schools.keys():
         raise ValueError(f"목록에 없는 학교: {', '.join(sorted(unknown))}")
-    extractor = GeminiExtractor(load_api_key(args.env_file), args.model)
+    api_key = load_api_key(args.env_file)
+    models = (
+        MODEL_CHAIN[MODEL_CHAIN.index(args.model) :]
+        if args.model in MODEL_CHAIN
+        else [args.model]
+    )
+    extractors = {model: GeminiExtractor(api_key, model) for model in models}
+    for extractor in extractors.values():
+        extractor.year = args.year
+    exhausted = {}
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
     async with async_playwright() as pw:
@@ -211,9 +384,29 @@ async def backfill(args: argparse.Namespace) -> int:
                     "school": school,
                     "campus": entry["campus"],
                     "region": entry["region"],
+                    "requested_model": args.model,
                 }
                 cached = reusable_result(args, slug, entry)
                 if cached is not None:
+                    cached["schema_version"] = 4
+                    cached["source"].setdefault(
+                        "requested_model", cached["source"]["model"]
+                    )
+                    cached.update(status="passed", adopted=True)
+                    cached.setdefault(
+                        "model_attempts",
+                        [
+                            {
+                                "requested_model": cached["source"].get(
+                                    "requested_model", cached["source"]["model"]
+                                ),
+                                "model": cached["source"]["model"],
+                                "status": "passed",
+                                "reused": True,
+                            }
+                        ],
+                    )
+                    write_json(args.output / f"{slug}-{args.year}.json", cached)
                     summary[slug] = {
                         **record,
                         "status": cached["validation"]["status"],
@@ -223,6 +416,8 @@ async def backfill(args: argparse.Namespace) -> int:
                             cached.get("extraction_attempts", [])
                         ),
                         "reused": True,
+                        "model": cached["source"]["model"],
+                        "model_attempts": cached.get("model_attempts", []),
                     }
                     print(
                         f"{school}: 기존 결과 재사용 ({summary[slug]['status']})",
@@ -239,7 +434,56 @@ async def backfill(args: argparse.Namespace) -> int:
                         sources = sorted(
                             entry["sources"], key=lambda s: s["kind"] != "GUIDE_PAGE"
                         )
-                        for source in sources:
+                        # PDF만 재사용하고 JSON은 현재 모델/프롬프트로 다시 추출한다.
+                        reuse_dir = (
+                            args.output
+                            if (args.output / f"{slug}-{args.year}.pdf").is_file()
+                            else getattr(args, "reuse_pdfs", None)
+                        )
+                        if reuse_dir is not None:
+                            path = reuse_dir / f"{slug}-{args.year}.pdf"
+                            if path.is_file():
+                                content = path.read_bytes()
+                                if not content.lstrip().startswith(b"%PDF-"):
+                                    raise ValueError("재사용 파일이 PDF가 아닙니다")
+                                if path.with_suffix(".json").is_file():
+                                    previous = json.loads(
+                                        path.with_suffix(".json").read_text()
+                                    )
+                                    metadata = previous["source"]
+                                else:
+                                    # 1차 추출 실패로 JSON이 없으면 수집 summary의 원본 증거 사용.
+                                    prior = json.loads(
+                                        (reuse_dir / "summary.json").read_text()
+                                    )[slug]
+                                    if prior.get("pdf_file") != path.name:
+                                        raise ValueError("재사용 PDF 파일명 불일치")
+                                    metadata = {
+                                        **prior,
+                                        "name": prior["school"],
+                                        "year": args.year,
+                                        "page_url": prior.get("page_url"),
+                                    }
+                                    record["pdf_reuse_metadata"] = "summary"
+                                digest = hashlib.sha256(content).hexdigest()
+                                if (
+                                    metadata["sha256"] != digest
+                                    or metadata.get("name") != school
+                                    or metadata.get("campus") != entry["campus"]
+                                    or metadata.get("year") != args.year
+                                ):
+                                    raise ValueError(
+                                        "재사용 PDF의 해시 또는 학교/학년도 불일치"
+                                    )
+                                source = {"url": metadata["page_url"]}
+                                pdf = DownloadedPDF(
+                                    metadata["pdf_url"], content, digest
+                                )
+                                record["pdf_reused"] = True
+                        for candidate_source in sources:
+                            if pdf is not None:
+                                break
+                            source = candidate_source
                             try:
                                 pdf = await download_pdf(
                                     context, source["url"], year=args.year
@@ -273,11 +517,14 @@ async def backfill(args: argparse.Namespace) -> int:
                             )
                             stage = "extract"
                             print(f"{school}: Gemini 추출 중", flush=True)
-                            data, validation, attempts = await extract_validated(
-                                extractor, pdf.content, school, args.year
+                            outcome = await extract_with_models(
+                                extractors, pdf.content, school, args.year, exhausted
                             )
+                            data = outcome.get("data")
+                            validation = outcome.get("validation")
+                            attempts = outcome.get("extraction_attempts", [])
                             result = {
-                                "schema_version": 2,
+                                "schema_version": 4,
                                 "source": {
                                     **entry,
                                     "school": school,
@@ -286,20 +533,38 @@ async def backfill(args: argparse.Namespace) -> int:
                                     "sha256": pdf.sha256,
                                     "pdf_file": pdf_path.name,
                                     "collected_at": datetime.now(UTC).isoformat(),
-                                    "model": args.model,
+                                    "model": outcome["model"],
+                                    "requested_model": outcome["requested_model"],
                                     "year": args.year,
                                 },
+                                "status": outcome["status"],
+                                "adopted": outcome["adopted"],
+                                "model_attempts": outcome["model_attempts"],
                                 "data": data,
                                 "validation": validation,
                                 "extraction_attempts": attempts,
                             }
                             write_json(args.output / f"{slug}-{args.year}.json", result)
                             record.update(
-                                status=validation["status"],
+                                status=outcome["status"],
+                                model=outcome["model"],
+                                model_attempts=outcome["model_attempts"],
                                 sha256=pdf.sha256,
                                 json_file=f"{slug}-{args.year}.json",
                                 extraction_attempts=len(attempts),
                             )
+                            if outcome["status"] == "error":
+                                record.update(
+                                    {
+                                        key: outcome[key]
+                                        for key in (
+                                            "error_type",
+                                            "error_code",
+                                            "http_status",
+                                        )
+                                        if key in outcome
+                                    }
+                                )
                     except Exception as exc:
                         record.update(
                             status="error",
@@ -312,13 +577,20 @@ async def backfill(args: argparse.Namespace) -> int:
                     summary[slug] = record
                     # 중간 결과도 보존한다. 한 학교 오류가 다른 학교를 중단시키지 않는다.
                     write_json(args.output / "summary.json", summary)
+                    write_json(args.output / "model_quotas.json", exhausted)
                     print(f"{school}: {record['status']}", flush=True)
 
             await asyncio.gather(*(collect(slug) for slug in selected))
         finally:
             await browser.close()
     write_json(args.output / "summary.json", {slug: summary[slug] for slug in selected})
-    return 0 if all(r["status"] == "passed" for r in summary.values()) else 1
+    write_json(args.output / "model_quotas.json", exhausted)
+    return (
+        0
+        if all(model in exhausted for model in models)
+        or all(r["status"] in {"passed", "QUOTA_WAIT"} for r in summary.values())
+        else 1
+    )
 
 
 def main() -> None:
@@ -335,13 +607,18 @@ def main() -> None:
     command.add_argument(
         "--output", type=Path, default=Path(__file__).resolve().parents[2] / "artifacts"
     )
-    command.add_argument("--model", default="gemini-3.1-flash-lite")
+    command.add_argument("--model", choices=MODEL_CHAIN, default=DEFAULT_MODEL)
+    command.add_argument(
+        "--reuse-pdfs",
+        type=Path,
+        help="원본 해시와 출처가 있는 기존 PDF 폴더; JSON은 재추출",
+    )
     command.add_argument("--env-file", type=Path)
     command.add_argument("--concurrency", type=int, default=3)
     command.add_argument(
         "--resume",
         action="store_true",
-        help="동일 설정·원본 해시의 기존 추출 JSON 재사용(미통과도 보존)",
+        help="호환 옵션: 같은 PDF의 통과 결과는 항상 자동 재사용",
     )
     args = parser.parse_args()
     if args.concurrency < 1:

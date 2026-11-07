@@ -91,3 +91,33 @@ def test_sparse_college_row_applies_only_to_its_columns(data):
     data["총계"].append({"전형": "학사편입", "인원": 2, "원문": "2"})
     data["소계"][0]["인원"].append({"전형": "학사편입", "인원": 2, "원문": "2"})
     assert validate_totals(data)["passed"]
+
+
+@pytest.mark.parametrize("text", ["1명 이내", "8명 내외", "약간명", "약간 명"])
+def test_range_text_has_separate_unverifiable_reason(data, text):
+    data["모집인원"][0]["인원"][0].update(인원=None, 원문=text)
+    result = validate_totals(data)
+    assert result["status"] == "unverifiable"
+    assert result["checks"][0]["범위_텍스트"] == 1
+    assert result["checks"][0]["칸_누락"] == 0
+    assert result["warnings"] == []
+
+
+@pytest.mark.parametrize(
+    "cell", [[], [{"전형": "일반편입", "인원": None, "원문": "판독불가"}]]
+)
+def test_missing_cells_warn_without_failing_totals(data, cell):
+    data["모집인원"][0]["인원"] = cell
+    result = validate_totals(data)
+    assert result["status"] == "unverifiable"
+    assert not any(c["status"] == "failed" for c in result["checks"])
+    assert result["checks"][0]["칸_누락"] == 1
+    assert result["checks"][0]["범위_텍스트"] == 0
+    assert result["warnings"][0]["code"] == "MISSING_CELL"
+
+
+def test_range_text_is_not_counted_as_fixed_even_if_model_emits_number(data):
+    data["모집인원"][0]["인원"][0]["원문"] = "3명 이내"
+    result = validate_totals(data)
+    assert result["status"] == "unverifiable"
+    assert result["checks"][0]["합계"] == 6

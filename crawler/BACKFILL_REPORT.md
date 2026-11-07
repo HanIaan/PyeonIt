@@ -1,3 +1,201 @@
+# T6 수집 범위 확정 및 추출 품질 복구
+
+실행일: 2026-11-08 (KST). 확정 범위 **44개교: 서울 29·경기 13·인천 2**. 한국외대는 하나의 통합 요강으로 수집한다.
+
+## 실행 결과
+
+전체 처리가 완료됐다. 2차 상태 집계: **통과 4·불일치 1·검증불가 1·요강없음 0·실패 1·QUOTA_WAIT 37**.
+
+1차 전체 결과는 **통과 11·불일치 25·검증불가 17·요강없음 4·실패 3**(60개 항목)이었고 홍익대는 별도 출처 미확인이었다. 이번 확정 44개교의 1차 상태만 집계하면 검증불가 13, 불일치 17, 실패 1, 실패 (출처 미확인) 1, 요강없음 2, 통과 10이다.
+
+조율자의 최신 지시에 따라 `gemini-3.8-flash → gemini-3.7-flash → gemini-3.6-flash → gemini-3.5-flash` 체인을 사용했다. lite 결과는 채택하지 않았다. 일일 한도 429는 실패가 아닌 `QUOTA_WAIT`이며 다음 모델로 넘어간다. 모델 체인의 한도가 모두 소진되면 나머지도 `QUOTA_WAIT`로 보존하고 종료 코드 0으로 끝난다. **통과한 결과만 `adopted=true`**로 채택한다. 불일치·검증불가의 JSON 데이터는 진단 자료이며 채택 데이터가 아니다.
+
+전체 대상·설정이 같은 실행 명령이다. 실제 실행에서는 `--schools`로 성균관·서강·인천을 우선 지정하고 이어서 나머지 41곳을 처리했다:
+
+```sh
+cd crawler
+.venv/bin/pyeonit-crawler backfill --year 2026 --model gemini-3.8-flash --output artifacts/t6-chain --concurrency 3
+```
+
+최초 실행 전 기존 PDF·출처 메타데이터를 `artifacts/t6-chain/`에 복사했고 성균관·서강의 이번 3.8 통과 JSON을 함께 보존했다. 같은 PDF SHA-256의 통과 결과는 자동으로 건너뛰므로 `--resume` 없이도 이어진다. 1차 3.1-flash-lite의 통과 결과는 건너뛰지 않고 재추출했다.
+
+## 학교별 비교
+
+모델은 실제 응답 `modelVersion`을 우선 기록했다. 응답 버전이 없으면 요청 모델을 기록한다. `QUOTA_WAIT`에서 데이터가 없으면 사용 모델은 `—`, 요청 체인/각 결과는 JSON의 `model_attempts`로 확인한다. 이전에 통과한 성균관·서강은 해당 3.8 요청 기록을 그대로 재사용한다.
+
+| 학교 | 지역 | 1차 → 2차 최종 | 모집인원 행 수 | 사용 모델 | 근거 |
+| --- | --- | --- | ---: | --- | --- |
+| 서강대학교 | SEOUL | 통과 → 통과 | 26 | 3.8-flash | 합계·소계 일치; 3.8-flash:통과; 동일 PDF 통과 결과 재사용 |
+| 성균관대학교 | SEOUL | 불일치 → 통과 | 51 | 3.8-flash | 합계·소계 일치; 3.8-flash:통과; 동일 PDF 통과 결과 재사용; 학사 73/73 일치 |
+| 연세대학교 (서울) | SEOUL | 검증불가 → 검증불가 | 79 | 3.6-flash | 기재 총계 없음/범위 표현/누락으로 검증불가; 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:검증불가 → 3.5-flash:검증불가 |
+| 가천대학교 | GYEONGGI | 실패 → 실패 | 0 | 3.6-flash | WRONG_DOCUMENT: 잘못된 문서; 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:실패; WRONG_DOCUMENT |
+| 가톨릭대학교 | GYEONGGI | 불일치 → 통과 | 50 | 3.6-flash | 합계·소계 일치; 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:통과 |
+| 강남대학교 | GYEONGGI | 통과 → 통과 | 18 | 3.6-flash | 합계·소계 일치; 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:검증불가 → 3.5-flash:통과 |
+| 건국대학교 (서울) | SEOUL | 불일치 → 불일치 | 51 | 3.6-flash | 총계 일반편입 431/429 (불일치); 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:불일치 → 3.5-flash:QUOTA_WAIT |
+| 경기대학교 | GYEONGGI | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 경희대학교 | SEOUL | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 고려대학교 (서울) | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 광운대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 국민대학교 | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 단국대학교 (죽전) | GYEONGGI | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 덕성여자대학교 | SEOUL | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 동국대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 동덕여자대학교 | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 명지대학교 | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 삼육대학교 | SEOUL | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 상명대학교 (서울) | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 서경대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 서울과학기술대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 서울대학교 | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 서울시립대학교 | SEOUL | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 서울여자대학교 | SEOUL | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 성신여자대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 세종대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 수원대학교 | GYEONGGI | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 숙명여자대학교 | SEOUL | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 숭실대학교 | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 아주대학교 | GYEONGGI | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 용인대학교 | GYEONGGI | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 이화여자대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 인천대학교 | INCHEON | 불일치 → QUOTA_WAIT | 65 | 3.6-flash | 총계 농어촌학생 17/13 (불일치); 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:불일치 → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행; 실제 일반 추출 **299 / 기재 299** |
+| 인하대학교 | INCHEON | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 중앙대학교 | SEOUL | 요강없음 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한국공학대학교 | GYEONGGI | 요강없음 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행; 최초 게시판 PDF는 면접 유의사항(2쪽); 모집요강으로 채택 금지 |
+| 한국외국어대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한국항공대학교 | GYEONGGI | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한성대학교 | SEOUL | 불일치 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한세대학교 | GYEONGGI | 통과 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한신대학교 | GYEONGGI | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한양대학교 (서울) | SEOUL | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 한양대학교 (ERICA) | GYEONGGI | 검증불가 → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행 |
+| 홍익대학교 (서울) | SEOUL | 실패 (출처 미확인) → QUOTA_WAIT | — | — | 3.8-flash:QUOTA_WAIT → 3.7-flash:QUOTA_WAIT → 3.6-flash:QUOTA_WAIT → 3.5-flash:QUOTA_WAIT; 한도 복구 후 3.8부터 재실행; 새 PDF: articleNo=145569, attachNo=84807 |
+
+## 모델별 무료 할당량 응답
+
+다음은 실제 429 응답의 `QuotaFailure.violations` 값이다. 성공 응답만 있거나 429에 값이 없으면 추정하지 않고 `응답에 없음`으로 기록한다. 요청 모델과 응답의 `quotaDimensions.model`이 다르면 그대로 표시한다. 이 경우 요청 모델 자체의 독립 한도로 단정하지 않는다.
+
+| 요청 모델 | 429 응답의 한도 | 응답 대상 모델 | 서버 대기시간 |
+| --- | --- | --- | --- |
+| gemini-3.8-flash | GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20 | gemini-3.8-flash | 54792s |
+| gemini-3.7-flash | GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20 | gemini-3.8-flash | 54791s |
+| gemini-3.6-flash | GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20 | gemini-3.6-flash | 54283s |
+| gemini-3.5-flash | GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20 | gemini-3.6-flash | 54358s |
+
+모델별 원시 허용 필드 증거: `crawler/artifacts/t6-chain/model_quotas.json`. API 키·인증 헤더·오류 본문은 저장하지 않는다.
+
+## 내일 3.8 한도 복구 후 재실행 대상
+
+통과하지 못한 학교는 아래 전부 재실행 대상이다. 실행 중인 학교는 최종 상태가 정해지면 이 목록을 갱신한다. 가천대의 잘못된 학년도 PDF와 한국공학대 면접 유의사항은 올바른 2026 편입 모집요강을 먼저 확보해야 한다. 학교별 PDF를 교체하면 출처·SHA-256 메타데이터도 함께 갱신해야 한다.
+
+| 학교 | 재실행 사유 |
+| --- | --- |
+| 연세대학교 (서울) | 검증불가 |
+| 가천대학교 | 실패 / WRONG_DOCUMENT |
+| 건국대학교 (서울) | 불일치 |
+| 경기대학교 | QUOTA_WAIT |
+| 경희대학교 | QUOTA_WAIT |
+| 고려대학교 (서울) | QUOTA_WAIT |
+| 광운대학교 | QUOTA_WAIT |
+| 국민대학교 | QUOTA_WAIT |
+| 단국대학교 (죽전) | QUOTA_WAIT |
+| 덕성여자대학교 | QUOTA_WAIT |
+| 동국대학교 | QUOTA_WAIT |
+| 동덕여자대학교 | QUOTA_WAIT |
+| 명지대학교 | QUOTA_WAIT |
+| 삼육대학교 | QUOTA_WAIT |
+| 상명대학교 (서울) | QUOTA_WAIT |
+| 서경대학교 | QUOTA_WAIT |
+| 서울과학기술대학교 | QUOTA_WAIT |
+| 서울대학교 | QUOTA_WAIT |
+| 서울시립대학교 | QUOTA_WAIT |
+| 서울여자대학교 | QUOTA_WAIT |
+| 성신여자대학교 | QUOTA_WAIT |
+| 세종대학교 | QUOTA_WAIT |
+| 수원대학교 | QUOTA_WAIT |
+| 숙명여자대학교 | QUOTA_WAIT |
+| 숭실대학교 | QUOTA_WAIT |
+| 아주대학교 | QUOTA_WAIT |
+| 용인대학교 | QUOTA_WAIT |
+| 이화여자대학교 | QUOTA_WAIT |
+| 인천대학교 | QUOTA_WAIT |
+| 인하대학교 | QUOTA_WAIT |
+| 중앙대학교 | QUOTA_WAIT |
+| 한국공학대학교 | QUOTA_WAIT |
+| 한국외국어대학교 | QUOTA_WAIT |
+| 한국항공대학교 | QUOTA_WAIT |
+| 한성대학교 | QUOTA_WAIT |
+| 한세대학교 | QUOTA_WAIT |
+| 한신대학교 | QUOTA_WAIT |
+| 한양대학교 (서울) | QUOTA_WAIT |
+| 한양대학교 (ERICA) | QUOTA_WAIT |
+| 홍익대학교 (서울) | QUOTA_WAIT |
+
+재실행 대상 **40곳**. 아래 명령은 통과 학교를 자동 건너뛰고 나머지를 3.8부터 다시 처리한다. 새로운 실행에서는 한도 소진 상태를 초기화한다.
+
+```sh
+cd crawler
+.venv/bin/pyeonit-crawler backfill --year 2026 --model gemini-3.8-flash --output artifacts/t6-chain --concurrency 3
+```
+
+## 성균관·인천대·서강 직접 검토
+
+- 성균관: `crawler/artifacts/t6-chain/skku-2026.json`, 학사 **73/73 일치**. 최초 3.8 추출 모집인원 51행. 원본 SHA-256 `91e5561ee528a519eecf9f2b849238cfeb7202c534a5e0c2b10b68352296fd96`.
+- 서강: `crawler/artifacts/t6-chain/sogang-2026.json`, 합계 검증 통과. 해당 JSON과 PDF 해시를 확인해 자동 재사용했다.
+- 인천: `crawler/artifacts/t6-chain/인천대학교-2026.json`, 실제 값 **일반편입 299 / 기재 299**.
+- 원문 시각 검토: 성균관 PDF 9쪽, 인천 PDF 5쪽을 PNG로 렌더링해 병합 셀과 총계를 확인했다(`crawler/artifacts/t6-review/`). merge 전에 조율자가 세 학교 JSON을 직접 확인한다.
+
+## 구현 및 출처 보완
+
+- `gemini.py`에 T7이 import할 순서 있는 단일 `MODEL_CHAIN` 리스트를 공개했다. 기본값은 3.8이다. 429만 다음 모델로 넘기고 503·타임아웃은 같은 모델에서 서버 지정 대기시간 우선 또는 1/2/4초 백오프로 재시도한다. 재시도 소진 후 해당 학교만 실패로 보존한다.
+- 각 모델에서 합계 불일치 시 같은 PDF로 최대 2회 재추출 후 다음 모델을 시도한다. 검증불가는 해당 모델에서 1회 후 다음 모델로 넘긴다. 최초 통과 즉시 채택한다. 모델별 시도 순서·결과·실제 모델·재추출 이력은 v4 JSON의 `model_attempts`, `source.model`, `source.requested_model`에 남긴다.
+- `ed5984e:crawler/prototype/extract.py`의 PROMPT를 복원·강화했다. 병합 인원은 단과대학 행으로 분리하고 학과의 전형 열은 모두 기록한다. 입학정원·여석·전년도 열과 소계·합계 행을 학과에 섞지 않으며 반복 표는 첫 모집인원 표만 사용한다.
+- 허용 범위 밖 `schema.py`는 수정하지 않고 `gemini.py`에서 복사한 스키마에 필수 `문서종류`를 추가했다. 해당 학년도 편입 모집요강이 아니면 `잘못된 문서`/`WRONG_DOCUMENT` 실패로 구분한다. `IDENTITY_MISMATCH`와 별도 사유이다.
+- `finishReason=MAX_TOKENS`의 부분 JSON은 채택하지 않는다. 출력 토큰 **32768 → 65536**, **65536 상한**에서도 잘리면 실패한다.
+- 범위 표현(이내·내외·약간명)과 칸 누락을 별도 집계한다. 누락은 `MISSING_CELL` 경고 및 검증불가로 표시하며 숫자 불일치로 세지 않는다. 원문은 보존한다.
+- 광운·삼육·서울시립·성신·수원·중앙·한국공학·한신·홍익의 누락 메뉴를 Playwright로 다시 찾아 공지·요강 두 종류를 모두 확보했다. 중앙대는 공지 랜딩을 가리키던 요강 URL을 실제 요강 메뉴로 교체했다. 한 종류만 남은 학교가 없어 미확인 사유 주석 대상은 없다. 탐색 증거: `artifacts/t6-discovery.json`, `t6-menu-verification.log`.
+- 홍익대 목록은 접근 가능했으나 상세 페이지 스크립트가 외부 화면으로 이동했다. 공식 서버가 반환한 공개 HTML 앵커를 보완 파싱해 `articleNo=145569`, `attachNo=84807` PDF를 새로 다운로드했다. TLS 예외는 기존 두 호스트(`admission.sogang.ac.kr`, `admission.gachon.ac.kr`)에만 유지했다.
+
+## 범위 제외
+
+| 학교 | 처리 |
+| --- | --- |
+| 강서대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 경동대학교 (메트로폴) | 범위 제외 (T6 확정 44개교 외) |
+| 대진대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 동양대학교 (동두천) | 범위 제외 (T6 확정 44개교 외) |
+| 성결대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 성공회대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 신한대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 안양대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 을지대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 인천가톨릭대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 차의과학대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 청운대학교 (인천) | 범위 제외 (T6 확정 44개교 외) |
+| 평택대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 한경국립대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 협성대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 화성의과학대학교 | 범위 제외 (T6 확정 44개교 외) |
+| 국립한국교통대학교 (의왕) | 범위 제외 (T6 확정 44개교 외) |
+
+## 검증 및 인계
+
+```sh
+cd crawler
+.venv/bin/pytest -q -m ''
+.venv/bin/ruff check src/pyeonit_crawler/{cli,download,gemini,validation}.py tests --exclude tests/monitor
+.venv/bin/ruff format --check src/pyeonit_crawler/{cli,download,gemini,validation}.py tests/test_{cli,download,gemini,validation}.py
+git diff --check
+git check-ignore artifacts/t6-chain/summary.json .venv/bin/python
+```
+
+- 네트워크 다운로드 3건을 포함한 pytest **128개 통과**. 모델 체인 순서/lite 미포함, 429 전환, 503·타임아웃 전환 금지, 모델별 재추출, 실제 모델 버전 저장, 통과 학교 자동 skip, lite 통과 재추출, QUOTA_WAIT 및 정상 종료, MAX_TOKENS 상한, 누락/범위 표현 구분, PDF 해시 무결성, 홍익 HTML 첨부 추출을 테스트했다.
+- Ruff·diff 공백 검사 통과. artifacts·.env·가상환경은 Git 제외 대상이며 커밋하지 않는다. 로컬 환경에 기존 의존성 psycopg[binary]·PyYAML과 PDF 검토용 PyMuPDF를 설치했으며 의존성 선언 파일은 변경하지 않았다.
+- T7 전달: `crawler/src/pyeonit_crawler/monitor/__main__.py`의 별도 기본값은 아직 `gemini-3.1-flash-lite`이다. 소유권 제한으로 수정하지 않았다. T7/조율자가 `MODEL_CHAIN`을 import하여 최신 체인/QUOTA_WAIT/통과 전용 채택 정책을 반영해야 한다. DB·monitor 구현 파일은 변경하지 않았다.
+
+---
+
+## 1차 실행 기록 (보존)
+
 # 2026학년도 수도권 일반대학 초기 수집 결과
 
 실행일: 2026-11-08. Python 3.15.2 / Playwright Chromium / Gemini REST `gemini-3.1-flash-lite`. DB 저장 없음.
