@@ -11,7 +11,13 @@ from playwright.async_api import APIResponse, BrowserContext, Error, Page
 from .detection import Link, select_guide_links
 
 # 2026-11-08 확인: 해당 PDF 서버의 인증서 체인 검증 실패로 이 호스트만 예외 허용.
-TLS_EXCEPTION_HOSTS = frozenset({"admission.sogang.ac.kr"})
+TLS_EXCEPTION_HOSTS = frozenset(
+    {
+        "admission.sogang.ac.kr",
+        # 2026-11-08: 가천대 공식 PDF 서버의 first certificate 체인 검증 실패를 실제 GET으로 확인.
+        "admission.gachon.ac.kr",
+    }
+)
 
 
 async def fetch_attachment(

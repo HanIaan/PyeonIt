@@ -114,6 +114,15 @@ def write_json(path: Path, data: dict) -> None:
     temporary.replace(path)
 
 
+def matches_request(data: dict, school: str, year: int) -> bool:
+    label = data.get("학교")
+    return (
+        data.get("학년도") == year
+        and isinstance(label, str)
+        and re.sub(r"\s+", "", school) in re.sub(r"\s+", "", label)
+    )
+
+
 async def extract_validated(extractor, content: bytes, school: str, year: int):
     """합계 불일치만 동일 PDF로 최대 2회 재추출한다. 최초 통과 즉시 채택."""
     attempts = []
@@ -121,7 +130,7 @@ async def extract_validated(extractor, content: bytes, school: str, year: int):
     for _ in range(3):
         try:
             data = await asyncio.to_thread(extractor.extract, content)
-            if data.get("학년도") != year or school not in data.get("학교", ""):
+            if not matches_request(data, school, year):
                 raise ValueError("추출된 학교 또는 학년도가 요청과 다릅니다")
             validation = validate_totals(data)
             attempts.append({"data": data, "validation": validation})
@@ -155,8 +164,7 @@ def reusable_result(args, slug: str, entry: dict) -> dict | None:
                 source.get(key) != entry[key]
                 for key in ("name", "campus", "region", "sources")
             )
-            or data.get("학년도") != args.year
-            or entry["name"] not in data.get("학교", "")
+            or not matches_request(data, entry["name"], args.year)
             or source["sha256"]
             != hashlib.sha256(
                 (args.output / f"{slug}-{args.year}.pdf").read_bytes()

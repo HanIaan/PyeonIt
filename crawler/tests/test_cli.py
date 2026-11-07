@@ -350,3 +350,19 @@ def test_resume_rejects_changed_input(monkeypatch, pipeline, change):
 )
 def test_safe_error_code_does_not_return_exception_body(message, expected):
     assert cli.safe_error_code(RuntimeError(message)) == expected
+
+
+def test_school_whitespace_is_normalized_only_for_identity_check():
+    original = extraction(school="차 의과학대학교")
+    data, validation, _ = asyncio.run(
+        cli.extract_validated(
+            SimpleNamespace(extract=lambda _: original),
+            b"pdf",
+            "차의과학대학교",
+            2026,
+        )
+    )
+    assert validation["passed"]
+    assert data["학교"] == "차 의과학대학교"
+    assert not cli.matches_request(original, "서울대학교", 2026)
+    assert not cli.matches_request(original, "차의과학대학교", 2027)

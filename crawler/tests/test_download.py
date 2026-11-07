@@ -167,6 +167,7 @@ def test_download_tries_next_attachment_after_request_error(monkeypatch):
     "url,expected_exception",
     [
         ("https://admission.sogang.ac.kr/guide.pdf", True),
+        ("https://admission.gachon.ac.kr/guide.pdf", True),
         ("https://admission.skku.edu/guide.pdf", False),
         ("https://admission.yonsei.ac.kr/guide.pdf", False),
         ("https://generativelanguage.googleapis.com/guide.pdf", False),
