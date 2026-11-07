@@ -29,6 +29,9 @@
   campus: ""
   region: GYEONGGI
   sources:
+    # guide1.asp는 현재 2027 예정 자료라 2026 요강 공지 글을 먼저 시도한다(감시용 원래 출처 유지).
+    - kind: GUIDE_PAGE
+      url: https://admission.gachon.ac.kr/admission/html/transfer/noticeView.asp?BOARD_IDX=27525
     - kind: NOTICE_BOARD
       url: https://admission.gachon.ac.kr/admission/html/transfer/notice.asp
     - kind: GUIDE_PAGE
@@ -291,6 +294,9 @@
   campus: ""
   region: GYEONGGI
   sources:
+    # 게시판 첫 PDF는 면접 유의사항이라 2026 편입생 모집요강 상세 글을 먼저 시도한다.
+    - kind: GUIDE_PAGE
+      url: https://iphak.tukorea.ac.kr/transfer/guide.htm?bbsid=guide&ctg_cd=transfer&page=1&skey=&keyword=&mode=view&bltn_seq=13025
     - kind: GUIDE_PAGE
       url: https://iphak.tukorea.ac.kr/transfer/guide.htm
     - kind: NOTICE_BOARD
