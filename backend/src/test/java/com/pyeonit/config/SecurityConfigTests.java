@@ -93,7 +93,7 @@ class SecurityConfigTests {
 			.andExpect(status().isForbidden())
 			.andExpect(jsonPath("$.code").value("FORBIDDEN"));
 		mvc.perform(get("/api/admin/reports").with(user("a").roles("ADMIN")))
-			.andExpect(status().isNotFound());
+			.andExpect(status().isOk());
 	}
 
 	@Test

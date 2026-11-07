@@ -130,7 +130,10 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: '`FORBIDDEN`, `CSRF_INVALID`, `SIGNUP_REQUIRED`, `ACCOUNT_BLOCKED` 가입할 수 없는 계정'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '409':
           description: '`NICKNAME_TAKEN` 닉네임 중복(대소문자 무시), `ALREADY_REGISTERED` 이미 회원'
           content:

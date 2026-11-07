@@ -1231,7 +1231,15 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
+            /** @description `FORBIDDEN`, `CSRF_INVALID`, `SIGNUP_REQUIRED`, `ACCOUNT_BLOCKED` 가입할 수 없는 계정 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description `NICKNAME_TAKEN` 닉네임 중복(대소문자 무시), `ALREADY_REGISTERED` 이미 회원 */
             409: {
                 headers: {
