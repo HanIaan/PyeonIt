@@ -1,0 +1,44 @@
+server:
+  port: ${SERVER_PORT:8081}
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:framework}
+  servlet:
+    session:
+      cookie:
+        secure: ${SERVER_SERVLET_SESSION_COOKIE_SECURE:true}
+        http-only: ${SERVER_SERVLET_SESSION_COOKIE_HTTP_ONLY:true}
+        same-site: ${SERVER_SERVLET_SESSION_COOKIE_SAME_SITE:lax}
+        domain: ${PYEONIT_COOKIE_DOMAIN}
+  error:
+    include-stacktrace: ${SERVER_ERROR_INCLUDE_STACKTRACE:never}
+    include-message: ${SERVER_ERROR_INCLUDE_MESSAGE:never}
+    include-binding-errors: ${SERVER_ERROR_INCLUDE_BINDING_ERRORS:never}
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+  flyway:
+    locations: ${SPRING_FLYWAY_LOCATIONS:classpath:db/migration}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health}
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:never}
+pyeonit:
+  cors:
+    allowed-origins: ${PYEONIT_CORS_ALLOWED_ORIGINS}
+  web-base-url: ${PYEONIT_WEB_BASE_URL}
+  community:
+    storage: ${PYEONIT_COMMUNITY_STORAGE:r2}
+    r2:
+      endpoint: ${PYEONIT_R2_ENDPOINT}
+      bucket: ${PYEONIT_R2_BUCKET}
+      access-key: ${PYEONIT_R2_ACCESS_KEY}
+      secret-key: ${PYEONIT_R2_SECRET_KEY}
+      public-url-base: ${PYEONIT_R2_PUBLIC_URL_BASE}
