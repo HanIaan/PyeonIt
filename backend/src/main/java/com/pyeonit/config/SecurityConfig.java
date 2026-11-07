@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.server.servlet.CookieSameSiteSupplier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
@@ -16,8 +15,6 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -25,6 +22,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.HandlerExceptionResolver;
+
+import com.pyeonit.auth.OAuth2LoginHandler;
 
 /**
  * 경로 규칙은 api/openapi.yaml 과 맞춘다. 회원 세션의 권한 계약(B1 구현):
@@ -36,14 +35,10 @@ public class SecurityConfig {
 	@Value("${pyeonit.cors.allowed-origins:http://localhost:3000}")
 	private List<String> allowedOrigins;
 
-	@Value("${pyeonit.web-base-url:http://localhost:3000}")
-	private String webBaseUrl;
-
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, Environment env,
+	SecurityFilterChain securityFilterChain(HttpSecurity http,
 			@Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver,
-			ObjectProvider<ClientRegistrationRepository> oauth2Clients) throws Exception {
-		boolean dev = env.matchesProfiles("dev");
+			ObjectProvider<ClientRegistrationRepository> oauth2Clients, OAuth2LoginHandler oauth2Handler) throws Exception {
 		http.authorizeHttpRequests(auth -> {
 			auth.requestMatchers("/actuator/health", "/actuator/health/**", "/error").permitAll()
 				.requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
@@ -52,11 +47,10 @@ public class SecurityConfig {
 				.requestMatchers("/api/me", "/api/auth/signup").authenticated()
 				.requestMatchers("/api/me/**").hasRole("USER")
 				.requestMatchers(HttpMethod.GET, "/api/**").permitAll()
-				.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll();
-			if (dev) {
-				auth.requestMatchers(HttpMethod.POST, "/api/dev/login").permitAll();
-			}
-			auth.anyRequest().hasRole("USER");
+				.requestMatchers(HttpMethod.POST, "/api/auth/logout").permitAll()
+				// 컨트롤러는 dev 프로필에서만 생기므로 그 외 프로필에서는 명세대로 404
+				.requestMatchers(HttpMethod.POST, "/api/dev/login").permitAll()
+				.anyRequest().hasRole("USER");
 		});
 
 		CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -73,23 +67,11 @@ public class SecurityConfig {
 				.authenticationEntryPoint((req, res, e) -> resolver.resolveException(req, res, null, e))
 				.accessDeniedHandler((req, res, e) -> resolver.resolveException(req, res, null, e)));
 
-		// 제공자 등록(spring.security.oauth2.client.registration.*)이 있을 때만 켠다. 실제 동작은 B1 이 handler 를 채운다.
+		// 제공자 등록(pyeonit.oauth2.registration.*, auth.OAuth2ClientConfig)이 있을 때만 켠다
 		if (oauth2Clients.getIfAvailable() != null) {
-			http.oauth2Login(oauth2 -> oauth2
-					.successHandler(oauth2SuccessHandler())
-					.failureHandler(oauth2FailureHandler()));
+			http.oauth2Login(oauth2 -> oauth2.successHandler(oauth2Handler).failureHandler(oauth2Handler));
 		}
 		return http.build();
-	}
-
-	// B1: 가입 대기면 {WEB}/signup, 회원이면 {WEB}/ 로 보낸다
-	private AuthenticationSuccessHandler oauth2SuccessHandler() {
-		return (req, res, auth) -> res.sendRedirect(webBaseUrl + "/");
-	}
-
-	// B1: 실패 사유별 code 로 바꾼다
-	private AuthenticationFailureHandler oauth2FailureHandler() {
-		return (req, res, e) -> res.sendRedirect(webBaseUrl + "/login?error=OAUTH2_FAILED");
 	}
 
 	@Bean
