@@ -21,8 +21,12 @@
 - 로그인: 브라우저를 `GET /oauth2/authorization/{kakao|google}` 로 이동. 콜백 `/login/oauth2/code/{provider}`.
   성공 → 회원 `{WEB}/`, 가입 대기 `{WEB}/signup`. 실패 → `{WEB}/login?error={code}`.
 - 가입 대기: OAuth2 는 됐지만 닉네임 미설정. `users.nickname` 이 NOT NULL 이라 users 행은 `POST /api/auth/signup` 에서 만든다. 이 세션은 `GET /api/me` 와 쓰기에서 403 `SIGNUP_REQUIRED`.
+  - users 행이 없으므로 이 세션의 `Authentication.getName()` 은 숫자가 아니다: `pending:<provider>:<providerUserId>`(예: `pending:kakao:123456`, provider 는 소문자 registrationId). B1 이 OAuth2 성공 핸들러/사용자 서비스에서 이 이름으로 세션을 만든다.
+  - 가입 완료(`POST /api/auth/signup`) 후 세션의 principal 은 숫자 이름(users.id)으로 교체된다.
 - 탈퇴(`DELETE /api/me`)는 `LAST_SOCIAL_ACCOUNT` 규칙과 무관하게 항상 가능: users.nickname=NULL, status=WITHDRAWN, withdrawn_at 기록, social_accounts 전부 삭제, 글·댓글은 유지(작성자 닉네임 null).
 - 권한 계약(B1 구현): 가입 회원 세션의 권한은 `ROLE_USER` 또는 `ROLE_ADMIN`(ADMIN 은 USER 를 포함, RoleHierarchy). 가입 대기 세션은 둘 다 없다.
+  - principal 이름: 가입 회원은 users.id 숫자 문자열(`"42"`), 가입 대기는 `pending:<provider>:<providerUserId>`.
+  - users.id 가 필요한 다른 도메인 코드(B2 등)는 `getName()` 을 숫자로 파싱하고, 파싱되지 않으면 `throw new ApiException(HttpStatus.FORBIDDEN, "SIGNUP_REQUIRED", ...)` 로 처리한다.
 - 경로 규칙(`SecurityConfig`): `/api/admin/**` ADMIN, `/api/me/**` 회원, `/api/me`·`/api/auth/signup` 인증, 그 외 `GET /api/**` 공개, 나머지는 회원. `POST /api/dev/login` 은 dev 프로필에서만 공개.
 - 공개 API는 APPROVED 요강만 노출한다. 학교·학년도별 가장 최근 승인 요강이 게시본이고 그 외 상태와 추출 결과는 관리자 API에서만 보인다.
 

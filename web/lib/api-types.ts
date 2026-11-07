@@ -80,6 +80,7 @@ export interface paths {
         /**
          * 첫 로그인 닉네임 설정(가입 완료)
          * @description OAuth2 로그인은 됐지만 회원이 아닌 가입 대기 세션에서만 호출한다(users.nickname NOT NULL이므로 이 호출에서 users 행을 만든다).
+         *     성공하면 세션 principal 이름이 `pending:<provider>:<providerUserId>` 에서 users.id 숫자로 교체된다.
          *     닉네임 규칙은 `NicknameRequest` 참고(PATCH /api/me/nickname 과 같다). 가입 시 최초 설정은 30일 변경 제한 대상이 아니며 제한 시계도 시작하지 않는다.
          *
          */
@@ -99,7 +100,7 @@ export interface paths {
         };
         /**
          * 내 정보
-         * @description 가입 대기 세션이면 403 `SIGNUP_REQUIRED`.
+         * @description 가입 대기 세션(principal 이름 `pending:<provider>:<providerUserId>`, 숫자 아님)이면 403 `SIGNUP_REQUIRED`.
          */
         get: operations["getMe"];
         put?: never;
@@ -1061,7 +1062,7 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
-        /** @description `FORBIDDEN` 권한 없음, `CSRF_INVALID`, `SIGNUP_REQUIRED` 닉네임 미설정, `ACCOUNT_SUSPENDED` 정지 회원 쓰기 */
+        /** @description `FORBIDDEN` 권한 없음, `CSRF_INVALID`, `SIGNUP_REQUIRED` 가입 대기 세션(principal 이름이 숫자 아님), `ACCOUNT_SUSPENDED` 정지 회원 쓰기 */
         Forbidden: {
             headers: {
                 [name: string]: unknown;
