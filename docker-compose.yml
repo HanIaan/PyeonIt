@@ -1,4 +1,4 @@
-# 로컬 개발용 DB
+# 로컬 개발용 DB + (선택) 모집요강 감시 루프
 services:
   postgres:
     image: postgres:16
@@ -11,5 +11,20 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # 프로필로 분리: `docker compose up`은 postgres만 띄운다. 설명은 crawler/DEPLOY.md
+  crawler:
+    build: ./crawler
+    profiles: ["monitor"]
+    restart: unless-stopped
+    depends_on: [postgres]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://pyeonit:pyeonit@postgres:5432/pyeonit}
+      TARGET_ACADEMIC_YEAR: ${TARGET_ACADEMIC_YEAR:-2027}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - pdfs:/data/pdfs
+      - ./crawler/data:/app/data:ro  # --seed /app/data/universities.yaml
+
 volumes:
   pgdata:
+  pdfs:

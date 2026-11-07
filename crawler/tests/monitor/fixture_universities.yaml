@@ -1,0 +1,14 @@
+- name: 테스트대학교
+  campus: ""
+  region: SEOUL
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://univ.test/notice
+    - kind: GUIDE_PAGE
+      url: https://univ.test/guide
+- name: 예시대학교
+  campus: 글로벌
+  region: GYEONGGI
+  sources:
+    - kind: NOTICE_BOARD
+      url: https://example.test/board
