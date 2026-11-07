@@ -67,7 +67,7 @@ page/size 하나로 통일: `page`(0부터, 기본 0), `size`(기본 20, 최대 
 |---|---|---|
 | 400 | 요청만 보고 알 수 있는 오류 (형식, 범위, 필수값) | `INVALID_REQUEST`(파싱·타입 오류), `VALIDATION_FAILED`(값 검증, fieldErrors 포함) |
 | 401 | 로그인 필요 | `UNAUTHORIZED` |
-| 403 | 로그인했지만 할 수 없음 | `FORBIDDEN`(권한·작성자 아님), `CSRF_INVALID`, `SIGNUP_REQUIRED`(닉네임 미설정), `ACCOUNT_SUSPENDED`(정지 회원 쓰기) |
+| 403 | 로그인했지만 할 수 없음 | `FORBIDDEN`(권한·작성자 아님), `CSRF_INVALID`, `SIGNUP_REQUIRED`(닉네임 미설정), `ACCOUNT_SUSPENDED`(정지 회원 쓰기), `ACCOUNT_BLOCKED`(가입할 수 없는 계정) |
 | 404 | 없음, 또는 보이면 안 됨(HIDDEN·DELETED 글, 미승인 요강) | `NOT_FOUND` |
 | 409 | 현재 상태와 충돌 (중복, 이미 처리됨) | `NICKNAME_TAKEN`, `ALREADY_REGISTERED`, `PROVIDER_ALREADY_LINKED`, `ALREADY_REPORTED`, `DOCUMENT_ALREADY_REVIEWED`, `REPORT_ALREADY_HANDLED`, `SANCTION_NOT_ACTIVE` |
 | 413 | 업로드 크기 초과 | `PAYLOAD_TOO_LARGE` |

@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pyeonit.config.ApiException;
+import com.pyeonit.admin.community.SanctionBlocklist;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,8 +43,11 @@ class AuthService {
 
 	private final List<String> forbiddenWords;
 
+	private final SanctionBlocklist blocklist;
+
 	AuthService(UserRepository users, SocialAccountRepository socials, JdbcTemplate jdbc,
-			@Value("${pyeonit.nickname.forbidden-words}") List<String> forbiddenWords) {
+			@Value("${pyeonit.nickname.forbidden-words}") List<String> forbiddenWords, SanctionBlocklist blocklist) {
+		this.blocklist = blocklist;
 		this.users = users;
 		this.socials = socials;
 		this.jdbc = jdbc;
@@ -135,6 +139,9 @@ class AuthService {
 		}
 		checkNickname(nickname, null);
 		try {
+			if (blocklist.isBlocked(provider.name(), parts[2])) {
+				throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_BLOCKED", "가입할 수 없는 계정입니다");
+			}
 			User user = users.saveAndFlush(new User(nickname, User.Role.USER));
 			socials.saveAndFlush(new SocialAccount(user.id, provider, parts[2]));
 			return user;
@@ -205,6 +212,7 @@ class AuthService {
 	/** LAST_SOCIAL_ACCOUNT 와 무관하게 소셜 계정 전부 삭제. 글·댓글은 users 행이 남으므로 유지된다. */
 	@Transactional
 	void withdraw(User user) {
+		blocklist.recordOnWithdraw(user.id);
 		socials.deleteByUserId(user.id);
 		user.nickname = null;
 		user.status = User.Status.WITHDRAWN;
