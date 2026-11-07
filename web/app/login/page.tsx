@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [nickname, setNickname] = useState("테스트회원");
   const [role, setRole] = useState<Schemas["DevLoginRequest"]["role"]>("USER");
+  const [suspended, setSuspended] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (state === "authenticated") router.replace("/me");
@@ -77,7 +78,7 @@ export default function LoginPage() {
             setBusy(true);
             setError("");
             try {
-              await devLogin({ nickname, role });
+              await devLogin({ nickname, role, suspended });
               await refresh();
               router.push("/");
             } catch (err) {
@@ -109,6 +110,16 @@ export default function LoginPage() {
               <option value="USER">일반 회원 (USER)</option>
               <option value="ADMIN">관리자 (ADMIN)</option>
             </select>
+          </label>
+          <label className="flex min-h-11 items-center gap-3">
+            <input
+              type="checkbox"
+              name="suspended"
+              checked={suspended}
+              onChange={(e) => setSuspended(e.target.checked)}
+              className="h-5 w-5"
+            />
+            <span>정지 회원으로 로그인</span>
           </label>
           <button disabled={busy} className={primaryClass}>
             {busy ? "처리 중…" : "테스트 로그인"}

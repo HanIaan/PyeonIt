@@ -43,12 +43,16 @@ function validateNickname(nickname: string) {
   if (usedNicknames.has(nickname.toLowerCase()))
     throw new ApiError(409, "NICKNAME_TAKEN", "이미 사용 중인 닉네임입니다.");
 }
-function createMember(nickname: string, role: Me["role"] = "USER"): Me {
+function createMember(
+  nickname: string,
+  role: Me["role"] = "USER",
+  suspended = false,
+): Me {
   return {
     id: 1,
     nickname,
     role,
-    status: "ACTIVE",
+    status: suspended ? "SUSPENDED" : "ACTIVE",
     suspendedUntil: null,
     nicknameChangeableAt: null,
     socialAccounts: [
@@ -125,7 +129,7 @@ export async function devLogin(
     throw new ApiError(404, "NOT_FOUND", "개발 로그인이 꺼져 있습니다.");
   if (!AUTH_MOCK)
     return api<Me>("/api/dev/login", { method: "POST", json: request });
-  mockMe = createMember(request.nickname, request.role);
+  mockMe = createMember(request.nickname, request.role, request.suspended);
   pendingProvider = null;
   return structuredClone(mockMe);
 }
