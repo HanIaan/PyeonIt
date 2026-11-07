@@ -1,3 +1,9 @@
+import { Suspense } from "react";
+import PostList from "@/components/community/post-list";
 export default function Page() {
-  return <h1 className="text-2xl font-bold">커뮤니티</h1>;
+  return (
+    <Suspense fallback={<p>커뮤니티를 불러오는 중입니다…</p>}>
+      <PostList />
+    </Suspense>
+  );
 }
