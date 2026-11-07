@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+from urllib.parse import quote
 
 import httpx
 import pytest
@@ -20,8 +21,8 @@ YEAR = 2027
 T0 = datetime.now(UTC) + timedelta(minutes=1)
 FAKE_WEBHOOK = "https://discord.example/api/webhooks/test"
 RECOVER_SQL = (  # DEPLOY.md의 복구 SQL과 같게 유지
-    "UPDATE admission_documents SET status = 'RETRY_PENDING', retry_count = 0 "
-    "WHERE id = %s"
+    "UPDATE admission_documents SET status = 'RETRY_PENDING', retry_count = 0, "
+    "retry_after = NULL WHERE id = %s"
 )
 
 
@@ -52,6 +53,7 @@ def data(total=3, year=YEAR):
     return {
         "학교": "테스트대학교",
         "학년도": year,
+        "문서종류": "편입학 모집요강",
         "모집인원": [
             {"계열": "인문", "단위": "학과", "모집단위": "국문", "인원": [cell]}
         ],
@@ -61,12 +63,21 @@ def data(total=3, year=YEAR):
     }
 
 
-def fetcher(links=(), download=None, extract=None):
+# 요강 고정 페이지의 대상 학년도 PDF 링크(서강대식: 문구는 'PDF 다운로드', 파일명은 쿼리에)
+GUIDE_LINK = Link(
+    "PDF 다운로드",
+    "https://univ.test/download.asp?f=/up/1.pdf&name=2027%ED%95%99%EB%85%84%EB%8F%84"
+    "%20%ED%8E%B8%EC%9E%85%ED%95%99%20%EB%AA%A8%EC%A7%91%EC%9A%94%EA%B0%95.pdf",
+)
+
+
+def fetcher(links=(GUIDE_LINK,), download=None, extract=None, fetch=None):
     return SimpleNamespace(
         links=AsyncMock(return_value=list(links)),
         download=AsyncMock(return_value=pdf(b"%PDF-a"))
         if download is None
         else download,
+        fetch=AsyncMock(return_value=pdf(b"%PDF-a")) if fetch is None else fetch,
         extract=MagicMock(return_value=data()) if extract is None else extract,
         model="mock",
     )
@@ -78,11 +89,10 @@ def run(conn, f, now, tmp_path, only=None):
     )
 
 
-def gemini_error(code: int) -> httpx.HTTPStatusError:
+def gemini_error(code: int, body=None) -> httpx.HTTPStatusError:
     request = httpx.Request("POST", "https://gemini.test")
-    return httpx.HTTPStatusError(
-        str(code), request=request, response=httpx.Response(code, request=request)
-    )
+    response = httpx.Response(code, request=request, json=body or {})
+    return httpx.HTTPStatusError(str(code), request=request, response=response)
 
 
 def doc(conn):
@@ -191,7 +201,7 @@ def test_same_pdf_never_reanalyzed(conn, tmp_path):
         source(conn, "GUIDE_PAGE")["content_hash"]
         == hashlib.sha256(b"%PDF-a").hexdigest()
     )
-    g2 = fetcher(download=AsyncMock(return_value=pdf(b"%PDF-b")))
+    g2 = fetcher(fetch=AsyncMock(return_value=pdf(b"%PDF-b")))
     run(conn, g2, T0 + timedelta(days=2), tmp_path)
     g2.extract.assert_called_once()
 
@@ -210,9 +220,13 @@ def test_interval_switches_after_collection(conn, tmp_path):
 
     t1 = T0 + timedelta(minutes=10)
     f2 = fetcher(
-        download=AsyncMock(return_value=pdf(b"%PDF-new")),
+        fetch=AsyncMock(return_value=pdf(b"%PDF-new")),
         extract=MagicMock(return_value=data(total=4)),
     )
+    run(conn, f2, t1, tmp_path)
+    # 추출은 확인 뒤에 하므로 이번 확인의 다음 주기는 10분, 그다음부터 하루
+    assert source(conn, "GUIDE_PAGE")["next_check_at"] == t1 + timedelta(minutes=10)
+    t1 += timedelta(minutes=10)
     run(conn, f2, t1, tmp_path)
     assert source(conn, "GUIDE_PAGE")["next_check_at"] == t1 + timedelta(days=1)
     doc = conn.execute(
@@ -248,7 +262,7 @@ def test_passed_validation_is_extracted(conn, tmp_path):
 def test_retry_backoff_is_limited(conn, tmp_path):
     load_seed(conn, FIXTURE)
     only(conn, "GUIDE_PAGE")
-    f = fetcher(download=AsyncMock(side_effect=TimeoutError("timeout")))
+    f = fetcher(fetch=AsyncMock(side_effect=TimeoutError("timeout")))
     now, delays = T0, []
     for _ in range(5):
         run(conn, f, now, tmp_path)
@@ -271,9 +285,7 @@ def test_retry_backoff_is_limited(conn, tmp_path):
     assert source(conn, "GUIDE_PAGE")["consecutive_failures"] == 0
 
 
-@pytest.mark.parametrize(
-    "exc", [gemini_error(429), gemini_error(503), httpx.ReadTimeout("timeout")]
-)
+@pytest.mark.parametrize("exc", [gemini_error(503), httpx.ReadTimeout("timeout")])
 def test_gemini_transient_error_retries_then_fails_with_alert(
     conn, tmp_path, monkeypatch, webhook, exc
 ):
@@ -422,3 +434,363 @@ def test_only_limits_sources(conn, tmp_path):
     assert core.unknown_universities(conn, ["예시대학교(글로벌)", "없는대학교"]) == [
         "없는대학교"
     ]
+
+
+# --- 1) 429 = QUOTA_WAIT ---------------------------------------------------------
+
+
+def quota_429(delay=None):
+    details = [{"retryDelay": delay}] if delay else []
+    return gemini_error(429, {"error": {"code": 429, "details": details}})
+
+
+def two_posts(conn):
+    only(conn, "NOTICE_BOARD")
+    posts = [
+        Link("2027학년도 편입학 모집요강", "https://univ.test/n/1"),
+        Link("2027학년도 편입학 모집요강(학사)", "https://univ.test/n/2"),
+    ]
+    pdfs = {posts[0].url: pdf(b"%PDF-1"), posts[1].url: pdf(b"%PDF-2")}
+    return posts, AsyncMock(side_effect=lambda url: pdfs[url])
+
+
+def test_quota_429_waits_without_counting_and_alerts_once_a_day(
+    conn, tmp_path, monkeypatch, webhook
+):
+    monkeypatch.setenv("ALERT_WEBHOOK_URL", FAKE_WEBHOOK)
+    load_seed(conn, FIXTURE)
+    posts, download = two_posts(conn)
+    f = fetcher(
+        posts, download=download, extract=MagicMock(side_effect=quota_429("1800s"))
+    )
+    run(conn, f, T0, tmp_path)
+    assert (
+        f.extract.call_count == 1
+    )  # 할당량 소진 뒤 같은 주기의 남은 문서는 호출 안 함
+    docs = conn.execute(
+        "SELECT status, retry_count, retry_after FROM admission_documents ORDER BY id"
+    ).fetchall()
+    assert [(d["status"], d["retry_count"]) for d in docs] == [("QUOTA_WAIT", 0)] * 2
+    assert {d["retry_after"] for d in docs} == {T0 + timedelta(seconds=1800)}
+    assert [a["kind"] for a in alerts(conn)] == ["QUOTA_WAIT"] and len(
+        webhook.sent
+    ) == 1
+
+    run(conn, f, T0 + timedelta(minutes=10), tmp_path)  # 재개 시각 전: 호출 없음
+    assert f.extract.call_count == 1
+    run(
+        conn, f, T0 + timedelta(minutes=30), tmp_path
+    )  # 재개 후 다시 429: 알림은 하루 1회
+    assert f.extract.call_count == 2 and len(alerts(conn)) == 1
+    for _ in range(10):  # 429는 몇 번이 와도 FAILED로 가지 않는다
+        now = conn.execute(
+            "SELECT max(retry_after) AS t FROM admission_documents"
+        ).fetchone()["t"]
+        run(conn, f, now + timedelta(minutes=10), tmp_path)
+    assert {
+        d["status"] for d in conn.execute("SELECT status FROM admission_documents")
+    } == {"QUOTA_WAIT"}
+    assert (
+        conn.execute(
+            "SELECT max(retry_count) AS m FROM admission_documents"
+        ).fetchone()["m"]
+        == 0
+    )
+    run(conn, f, T0 + timedelta(days=2), tmp_path)
+    assert len(alerts(conn)) == 2  # 하루가 지나면 다시 알림
+
+    ok = fetcher(posts, download=download)
+    run(conn, ok, T0 + timedelta(days=3), tmp_path)
+    assert {
+        d["status"] for d in conn.execute("SELECT status FROM admission_documents")
+    } == {"EXTRACTED"}
+
+
+def test_quota_without_retry_delay_waits_default(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    run(conn, fetcher(extract=MagicMock(side_effect=quota_429())), T0, tmp_path)
+    assert (
+        conn.execute("SELECT retry_after FROM admission_documents").fetchone()[
+            "retry_after"
+        ]
+        == T0 + core.QUOTA_DEFAULT_WAIT
+    )
+
+
+# --- 2) 게시글 단위 예외 격리 ----------------------------------------------------
+
+
+def test_one_link_failure_does_not_fail_the_board(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    posts, ok_download = two_posts(conn)
+
+    async def download(url):
+        if url == posts[0].url:
+            raise httpx.ReadTimeout("timeout")
+        return await ok_download(url)
+
+    f = fetcher(posts, download=AsyncMock(side_effect=download))
+    run(conn, f, T0, tmp_path)
+    src = source(conn, "NOTICE_BOARD")
+    assert src["consecutive_failures"] == 0 and src["last_error"] is None
+    assert doc(conn)["status"] == "EXTRACTED"  # 나머지 링크는 계속 처리
+
+    def item():
+        return conn.execute(
+            "SELECT status, failures FROM crawl_seen_items WHERE url = %s",
+            (posts[0].url,),
+        ).fetchone()
+
+    assert item() == {"status": "RETRY", "failures": 1}
+    run(conn, f, T0 + timedelta(days=1), tmp_path)
+    assert item() == {"status": "RETRY", "failures": 2} and not alerts(conn)
+    run(conn, f, T0 + timedelta(days=2), tmp_path)
+    assert item() == {"status": "NEEDS_REVIEW", "failures": 3}
+    assert [a["kind"] for a in alerts(conn)] == ["LINK_FAILED"]
+    calls = f.download.await_count
+    run(conn, f, T0 + timedelta(days=3), tmp_path)
+    assert f.download.await_count == calls  # 운영자에게 넘긴 글은 다시 받지 않는다
+
+
+def test_board_access_failure_keeps_source_backoff(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    only(conn, "NOTICE_BOARD")
+    f = fetcher(links=())
+    f.links = AsyncMock(side_effect=httpx.ConnectError("down"))
+    run(conn, f, T0, tmp_path)
+    src = source(conn, "NOTICE_BOARD")
+    assert src["consecutive_failures"] == 1
+    assert src["next_check_at"] == T0 + timedelta(minutes=1)
+
+
+# --- 3) 학년도 사전 필터 ---------------------------------------------------------
+
+
+def test_wants_gemini_rules():
+    assert core.wants_gemini(YEAR, "2027학년도 편입학 모집요강", [], None)
+    assert not core.wants_gemini(
+        YEAR, "PDF 다운로드", ["2026학년도 편입학 모집요강.pdf"], None
+    )
+    assert not core.wants_gemini(
+        YEAR, "편입학 모집요강", ["a.pdf"], "2026학년도 편입학 모집요강"
+    )
+    assert core.wants_gemini(
+        YEAR, "편입학 모집요강", ["a.pdf"], "2027학년도 (2026. 12.)"
+    )
+    assert core.wants_gemini(
+        YEAR, "편입학 모집요강", ["20251209144846ZQ25EU.pdf"], None
+    )
+    # 첫 페이지의 날짜는 학년도가 아니다(대상 학년도 요강을 놓치지 않도록)
+    assert core.wants_gemini(
+        YEAR, "편입학 모집요강", ["a.pdf"], "원서접수 2026. 12. 1."
+    )
+
+
+def test_first_page_text(make_pdf):
+    assert "Transfer 2027" in core.first_page_text(make_pdf("Transfer 2027"))
+    assert core.first_page_text(b"%PDF-broken") is None  # 스캔본·깨진 파일 = 판단 불가
+
+
+def test_other_year_pdf_skips_gemini_and_is_remembered(conn, tmp_path, monkeypatch):
+    load_seed(conn, FIXTURE)
+    only(conn, "NOTICE_BOARD")
+    monkeypatch.setattr(
+        core, "first_page_text", lambda content: "2026학년도 편입학 모집요강"
+    )
+    posts = [
+        Link("편입학 모집요강 안내", "https://univ.test/n/1"),
+        Link("편입학 모집요강 (재게시)", "https://univ.test/n/2"),
+    ]
+    f = fetcher(posts)
+    run(conn, f, T0, tmp_path)
+    f.extract.assert_not_called()
+    assert not conn.execute("SELECT 1 FROM admission_documents").fetchone()
+    rows = conn.execute("SELECT status, file_sha256 FROM crawl_seen_items").fetchall()
+    sha = hashlib.sha256(b"%PDF-a").hexdigest()
+    assert [(r["status"], r["file_sha256"]) for r in rows] == [("DONE", sha)] * 2
+    run(conn, f, T0 + timedelta(days=1), tmp_path)
+    assert f.download.await_count == 2  # 본 글은 다시 받지 않는다
+
+    # 요강 고정 페이지: 학년도 없는 링크의 2026 PDF는 content_hash만 기록, Gemini 없음
+    only(conn, "GUIDE_PAGE")
+    g = fetcher([Link("편입학 모집요강.pdf", "https://univ.test/up/x.pdf")])
+    g.fetch = AsyncMock(return_value=pdf(b"%PDF-g"))
+    run(conn, g, T0, tmp_path)
+    run(conn, g, T0 + timedelta(minutes=10), tmp_path)
+    g.extract.assert_not_called()
+    assert (
+        source(conn, "GUIDE_PAGE")["content_hash"]
+        == hashlib.sha256(b"%PDF-g").hexdigest()
+    )
+
+
+def test_unreadable_pdf_calls_gemini(conn, tmp_path, monkeypatch):
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    monkeypatch.setattr(core, "first_page_text", lambda content: None)
+    f = fetcher([Link("편입학 모집요강.pdf", "https://univ.test/up/x.pdf")])
+    run(conn, f, T0, tmp_path)
+    f.extract.assert_called_once()
+
+
+# --- 4) 확인 먼저, 추출은 나중에 -------------------------------------------------
+
+
+def test_all_sources_checked_before_extraction(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    conn.execute("UPDATE crawl_sources SET enabled = url LIKE 'https://univ.test/%%'")
+    order = []
+    post = Link("2027학년도 편입학 모집요강", "https://univ.test/n/1")
+
+    async def links(url):
+        order.append(f"links {url}")
+        return [post] if url.endswith("notice") else [GUIDE_LINK]
+
+    async def download(url):
+        order.append("download")
+        return pdf(b"%PDF-n")
+
+    async def fetch(url, referer):
+        order.append("fetch")
+        return pdf(b"%PDF-g")
+
+    def extract(content):
+        order.append("extract")
+        return data()
+
+    f = SimpleNamespace(
+        links=links, download=download, fetch=fetch, extract=extract, model="mock"
+    )
+    run(conn, f, T0, tmp_path)
+    assert order.count("extract") == 2
+    assert order.index("extract") > max(
+        i for i, step in enumerate(order) if step != "extract"
+    )
+
+
+def test_requests_today_logged(conn, tmp_path, caplog):
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    with caplog.at_level("INFO"):
+        run(conn, fetcher(), datetime.now(UTC) + timedelta(seconds=1), tmp_path)
+    assert "오늘 Gemini 요청 1건" in caplog.text
+
+
+# --- 5) 학교 대조 ----------------------------------------------------------------
+
+
+def test_school_matches_exact_and_campus():
+    assert core.school_matches("서강 대학교", "서강대학교", "", None)
+    assert not core.school_matches("서울대학교", "서울대학교병원", "", None)
+    assert not core.school_matches("한양대학교 ERICA", "한양대학교", "", None)
+    assert not core.school_matches("연세대학교", "연세대학교", "서울", None)
+    assert core.school_matches("연세대학교 서울캠퍼스", "연세대학교", "서울", None)
+    assert core.school_matches(
+        "연세대학교", "연세대학교", "서울", "연세대학교 서울캠퍼스 편입학"
+    )
+    assert not core.school_matches("연세대학교 미래캠퍼스", "연세대학교", "서울", None)
+    assert not core.school_matches(None, "연세대학교", "", None)
+
+
+def test_school_mismatch_needs_review(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    wrong = {
+        **data(),
+        "학교": "테스트대학교 제2캠퍼스",
+    }  # 부분 일치는 더 이상 통과하지 않는다
+    run(conn, fetcher(extract=MagicMock(return_value=wrong)), T0, tmp_path)
+    assert doc(conn)["status"] == "NEEDS_REVIEW"
+    assert conn.execute("SELECT error FROM extraction_runs").fetchone()["error"] == (
+        "학교 또는 캠퍼스 불일치"
+    )
+
+
+def test_wrong_document_is_failed(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    wrong = {**data(), "문서종류": "잘못된 문서"}
+    run(conn, fetcher(extract=MagicMock(return_value=wrong)), T0, tmp_path)
+    assert doc(conn)["status"] == "FAILED"
+
+
+# --- 6) 요강 고정 페이지 후보 PDF -------------------------------------------------
+
+
+def q(text: str, encoding="utf-8") -> str:
+    return quote(text.encode(encoding))
+
+
+SOGANG_LIKE = [  # 2026-11-08 서강·연세 요강 페이지 링크 구조
+    Link(
+        "Embedded PDF",
+        "https://u.test/viewer.html?file=%2Fup%2F20251209144846ZQ25EU.pdf",
+    ),
+    Link("PDF 확대보기", "https://u.test/up/20251209144846ZQ25EU.pdf"),
+    Link(
+        "PDF 다운로드",
+        "https://u.test/dl.asp?real=/up/1.pdf&name="
+        + q("2026학년도 편입학 모집요강.pdf"),
+    ),
+    Link(
+        "",
+        "https://u.test/dl.asp?furl=g/2.HWP&fname="
+        + q("2026학년도 편입학전형 모집요강.hwp", "cp949"),
+    ),
+]
+
+
+def test_guide_candidates():
+    assert core.guide_candidates(SOGANG_LIKE, YEAR) == ([], 1)  # 지난 요강만 있음
+    new = Link(
+        "",
+        "https://u.test/dl.asp?furl=g/3.PDF&fname="
+        + q("2027학년도 편입학전형 모집요강.pdf", "cp949"),
+    )
+    plan = Link("2027학년도 편입학 모집 기본계획.pdf", "https://u.test/plan.pdf")
+    assert core.guide_candidates([*SOGANG_LIKE, new, plan], YEAR) == ([new], 1)
+    no_year = Link("편입학 모집요강 다운로드", "https://u.test/guide.pdf")
+    assert core.guide_candidates([no_year], YEAR) == ([no_year], 0)
+    assert core.guide_candidates([Link("PDF", "https://u.test/x.pdf")], YEAR) == ([], 0)
+
+
+def test_guide_page_review_on_zero_or_many_candidates(conn, tmp_path):
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    stale = fetcher(SOGANG_LIKE)
+    run(conn, stale, T0, tmp_path)  # 지난 요강만: 정상 대기, 다운로드·알림 없음
+    stale.fetch.assert_not_awaited()
+    assert source(conn, "GUIDE_PAGE")["review_reason"] is None and not alerts(conn)
+
+    none = fetcher([Link("PDF", "https://u.test/x.pdf")])
+    run(conn, none, T0 + timedelta(minutes=10), tmp_path)
+    run(conn, none, T0 + timedelta(minutes=20), tmp_path)
+    assert source(conn, "GUIDE_PAGE")["review_reason"].startswith("요강 후보 PDF 0개")
+    assert [a["kind"] for a in alerts(conn)] == ["GUIDE_REVIEW"]  # 같은 사유는 한 번만
+
+    two = fetcher(
+        [GUIDE_LINK, Link("2027 편입학 모집요강.pdf", "https://u.test/b.pdf")]
+    )
+    run(conn, two, T0 + timedelta(minutes=30), tmp_path)
+    two.fetch.assert_not_awaited()
+    assert source(conn, "GUIDE_PAGE")["review_reason"].startswith("요강 후보 PDF 2개")
+    assert len(alerts(conn)) == 2
+
+    one = fetcher()
+    run(conn, one, T0 + timedelta(minutes=40), tmp_path)
+    one.fetch.assert_awaited_once_with(GUIDE_LINK.url, "https://univ.test/guide")
+    assert source(conn, "GUIDE_PAGE")["review_reason"] is None
+    assert doc(conn)["status"] == "EXTRACTED"
+
+
+# --- 모델 기본값 ------------------------------------------------------------------
+
+
+def test_monitor_uses_single_default_model():
+    from pyeonit_crawler.gemini import DEFAULT_MODEL
+    from pyeonit_crawler.monitor.__main__ import BrowserFetcher, build_parser
+
+    model = build_parser().parse_args([]).model
+    assert model == DEFAULT_MODEL == "gemini-3.8-flash" and "lite" not in model
+    assert BrowserFetcher(None, YEAR).model == DEFAULT_MODEL
