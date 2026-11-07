@@ -103,8 +103,8 @@ class SecurityConfigTests {
 	}
 
 	@Test
-	void devLoginIsNotPublicOutsideDevProfile() throws Exception {
-		mvc.perform(post("/api/dev/login").with(csrf())).andExpect(status().isUnauthorized());
+	void devLoginDoesNotExistOutsideDevProfile() throws Exception {
+		mvc.perform(post("/api/dev/login").with(csrf())).andExpect(status().isNotFound());
 	}
 
 	@Test
