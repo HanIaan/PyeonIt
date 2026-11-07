@@ -28,6 +28,7 @@
   - principal 이름: 가입 회원은 users.id 숫자 문자열(`"42"`), 가입 대기는 `pending:<provider>:<providerUserId>`.
   - users.id 가 필요한 다른 도메인 코드(B2 등)는 `getName()` 을 숫자로 파싱하고, 파싱되지 않으면 `throw new ApiException(HttpStatus.FORBIDDEN, "SIGNUP_REQUIRED", ...)` 로 처리한다.
 - 경로 규칙(`SecurityConfig`): `/api/admin/**` ADMIN, `/api/me/**` 회원, `/api/me`·`/api/auth/signup` 인증, 그 외 `GET /api/**` 공개, 나머지는 회원. `POST /api/dev/login` 은 dev 프로필에서만 공개.
+- dev 로그인은 `role`(USER/ADMIN)과 선택 필드 `suspended`(기본 false)를 받는다. `suspended=true` 면 SUSPENDED 상태 테스트 회원으로 로그인한다(정지 회원 UI 테스트용, 운영에는 없음).
 - 공개 API는 APPROVED 요강만 노출한다. 학교·학년도별 가장 최근 승인 요강이 게시본이고 그 외 상태와 추출 결과는 관리자 API에서만 보인다.
 
 ## 닉네임 규칙 (B1 구현, F1 UI)
