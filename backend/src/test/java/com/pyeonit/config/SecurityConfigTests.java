@@ -97,9 +97,10 @@ class SecurityConfigTests {
 	}
 
 	@Test
+	@org.springframework.security.test.context.support.WithMockUser(username = "1", roles = "ADMIN")
 	void adminInheritsUserRole() throws Exception {
-		mvc.perform(get("/api/me/favorite-universities").with(user("a").roles("ADMIN")))
-			.andExpect(status().isNotFound());
+		mvc.perform(get("/api/me/favorite-universities"))
+			.andExpect(status().isOk());
 	}
 
 	@Test
