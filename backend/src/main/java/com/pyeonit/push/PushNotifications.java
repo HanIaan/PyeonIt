@@ -20,15 +20,17 @@ class PushNotifications {
     private final JdbcTemplate db;
     private final TransactionTemplate transaction;
     private final PushSender sender;
+    private final PushEndpointPolicy endpoints;
     private final PushConfiguration.Properties properties;
     private final Clock clock;
     private final ZoneId zone;
 
     PushNotifications(JdbcTemplate db, PlatformTransactionManager manager, PushSender sender,
-            PushConfiguration.Properties properties, Clock clock, ZoneId pushZone) {
+            PushConfiguration.Properties properties, Clock clock, ZoneId pushZone, PushEndpointPolicy endpoints) {
         this.db = db;
         this.transaction = new TransactionTemplate(manager);
         this.sender = sender;
+        this.endpoints = endpoints;
         this.properties = properties;
         this.clock = clock;
         this.zone = pushZone;
@@ -102,6 +104,7 @@ class PushNotifications {
                 "/universities/" + target.universityId() + "?academicYear=" + target.academicYear());
         for (var subscription : subscriptions) {
             try {
+                endpoints.validate(subscription.endpoint());
                 int response = sender.send(subscription, payload);
                 if (response == 404 || response == 410) {
                     db.update("DELETE FROM push_subscriptions WHERE id=? AND user_id=?", subscription.id(), userId);

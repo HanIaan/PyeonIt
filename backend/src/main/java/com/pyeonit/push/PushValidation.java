@@ -1,20 +1,11 @@
 package com.pyeonit.push;
 
-import java.net.URI;
 import java.util.Base64;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.springframework.http.HttpStatus;
 import com.pyeonit.config.ApiException;
 
 final class PushValidation {
-    static void endpoint(String value) {
-        try {
-            URI uri = URI.create(value);
-            if (value.length() > 2048 || !"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
-                    || uri.getUserInfo() != null || uri.getFragment() != null) throw new IllegalArgumentException();
-        } catch (RuntimeException e) { throw invalid(); }
-    }
-
     static void keys(String p256dh, String auth) {
         try {
             byte[] key = decode(p256dh, 65);

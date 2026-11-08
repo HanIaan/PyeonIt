@@ -18,12 +18,14 @@ import tools.jackson.databind.ObjectMapper;
 class WebPushSender implements PushSender {
     private final PushConfiguration.Properties properties;
     private final ObjectMapper json;
+    private final PushEndpointPolicy endpoints;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NEVER).build();
 
-    WebPushSender(PushConfiguration.Properties properties, ObjectMapper json) {
+    WebPushSender(PushConfiguration.Properties properties, ObjectMapper json, PushEndpointPolicy endpoints) {
         this.properties = properties;
         this.json = json;
+        this.endpoints = endpoints;
         // No key parsing on startup: environments without keys remain fully usable.
         if (Security.getProvider("BC") == null) Security.addProvider(new BouncyCastleProvider());
     }
@@ -31,6 +33,7 @@ class WebPushSender implements PushSender {
     @Override
     public int send(Subscription subscription, Payload payload) throws Exception {
         if (!properties.enabled()) return 0;
+        endpoints.validate(subscription.endpoint());
         var service = new RequestEncoder(properties);
         var notification = new Notification(subscription.endpoint(), subscription.p256dh(), subscription.auth(),
                 json.writeValueAsBytes(payload));

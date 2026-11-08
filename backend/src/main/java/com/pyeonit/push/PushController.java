@@ -13,9 +13,11 @@ import com.pyeonit.config.ApiException;
 @RequestMapping("/api")
 class PushController {
     private final PushService service;
+    private final PushEndpointPolicy endpoints;
     private final PushConfiguration.Properties properties;
-    PushController(PushService service, PushConfiguration.Properties properties) {
+    PushController(PushService service, PushConfiguration.Properties properties, PushEndpointPolicy endpoints) {
         this.service = service;
+        this.endpoints = endpoints;
         this.properties = properties;
     }
 
@@ -28,7 +30,7 @@ class PushController {
     @PutMapping("/me/push-subscriptions")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void subscribe(Authentication auth, @Valid @RequestBody SubscriptionRequest request) {
-        PushValidation.endpoint(request.endpoint());
+        endpoints.validate(request.endpoint());
         PushValidation.keys(request.keys().p256dh(), request.keys().auth());
         service.subscribe(userId(auth), request);
     }
@@ -36,7 +38,7 @@ class PushController {
     @DeleteMapping("/me/push-subscriptions")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(Authentication auth, @RequestParam String endpoint) {
-        PushValidation.endpoint(endpoint);
+        endpoints.validate(endpoint);
         service.delete(userId(auth), endpoint);
     }
 

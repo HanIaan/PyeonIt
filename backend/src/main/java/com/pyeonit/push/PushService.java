@@ -1,6 +1,7 @@
 package com.pyeonit.push;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +12,12 @@ import com.pyeonit.push.PushController.SubscriptionRequest;
 @Service
 class PushService {
     private final JdbcTemplate db;
-    PushService(JdbcTemplate db) { this.db = db; }
+    private final int maxSubscriptionsPerUser;
+    PushService(JdbcTemplate db, @Value("${pyeonit.push.max-subscriptions-per-user:10}") int maxSubscriptionsPerUser) {
+        if (maxSubscriptionsPerUser < 1) throw new IllegalArgumentException("Push subscription limit must be positive");
+        this.db = db;
+        this.maxSubscriptionsPerUser = maxSubscriptionsPerUser;
+    }
 
     @Transactional
     public void subscribe(long userId, SubscriptionRequest request) {
@@ -21,6 +27,13 @@ class PushService {
             ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, p256dh=excluded.p256dh,
                 auth=excluded.auth, user_agent=excluded.user_agent, last_success_at=NULL
             """, userId, request.endpoint(), request.keys().p256dh(), request.keys().auth(), request.userAgent());
+        // The user lock serializes registrations. Keep the just-upserted endpoint even during a transfer.
+        db.update("""
+            DELETE FROM push_subscriptions WHERE user_id=? AND id IN (
+                SELECT id FROM push_subscriptions WHERE user_id=? AND endpoint<>?
+                ORDER BY created_at DESC, id DESC OFFSET ?
+            )
+            """, userId, userId, request.endpoint(), maxSubscriptionsPerUser - 1);
     }
 
     @Transactional

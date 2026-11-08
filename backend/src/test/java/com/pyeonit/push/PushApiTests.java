@@ -22,7 +22,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.test.web.servlet.MockMvc;
 import com.pyeonit.TestcontainersConfiguration;
 
-@SpringBootTest(properties = {"pyeonit.push.scheduling-enabled=false", "pyeonit.push.vapid-public-key=",
+@SpringBootTest(properties = {"pyeonit.push.allowed-endpoint-host-suffixes=push.example.invalid", "pyeonit.push.max-subscriptions-per-user=3", "pyeonit.push.scheduling-enabled=false", "pyeonit.push.vapid-public-key=",
         "pyeonit.push.vapid-private-key=", "pyeonit.push.vapid-subject="})
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -72,6 +72,40 @@ class PushApiTests {
                     .andExpect(status().isNoContent());
         }
         assertThat(db.queryForObject("SELECT count(*) FROM push_subscriptions", Integer.class)).isZero();
+    }
+
+    @Test
+    void enforcesConfiguredLimitEvictsOldestAndKeepsUpsertedOrTransferredEndpoint() throws Exception {
+        for (int i = 1; i <= 4; i++) register(first, ENDPOINT + i);
+        assertThat(db.queryForList("SELECT endpoint FROM push_subscriptions WHERE user_id=?", String.class, first))
+                .containsExactlyInAnyOrder(ENDPOINT + 2, ENDPOINT + 3, ENDPOINT + 4);
+        // Updating an existing endpoint at the limit must not evict another subscription.
+        register(first, ENDPOINT + 2);
+        assertThat(db.queryForObject("SELECT count(*) FROM push_subscriptions WHERE user_id=?", Integer.class, first)).isEqualTo(3);
+        register(second, ENDPOINT + "transfer");
+        db.update("UPDATE push_subscriptions SET created_at='2020-01-01T00:00:00Z' WHERE endpoint=?", ENDPOINT + "transfer");
+        register(first, ENDPOINT + "transfer");
+        assertThat(db.queryForList("SELECT endpoint FROM push_subscriptions WHERE user_id=?", String.class, first))
+                .containsExactlyInAnyOrder(ENDPOINT + 3, ENDPOINT + 4, ENDPOINT + "transfer");
+        assertThat(db.queryForObject("SELECT count(*) FROM push_subscriptions WHERE user_id=?", Integer.class, second)).isZero();
+    }
+
+    private void register(long owner, String endpoint) throws Exception {
+        mvc.perform(put("/api/me/push-subscriptions").with(user("" + owner)).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON).content(body.replace(ENDPOINT, endpoint)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void rejectsUnsafeEndpointsWithContractErrorAndAllowsConfiguredSubdomain() throws Exception {
+        for (String endpoint : List.of("https://10.0.0.1/send", "https://localhost/send", "http://push.example.invalid/send",
+                "https://push.example.invalid:8443/send", "https://evil-fcm.googleapis.com.attacker.example/send",
+                "https://user@push.example.invalid/send")) {
+            mvc.perform(put("/api/me/push-subscriptions").with(user("" + first)).with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON).content(body.replace(ENDPOINT, endpoint)))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+        }
+        register(first, "https://REGION.PUSH.EXAMPLE.INVALID:443/send");
     }
 
     @Test

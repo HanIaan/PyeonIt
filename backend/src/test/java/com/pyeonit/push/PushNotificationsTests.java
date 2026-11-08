@@ -17,7 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import com.pyeonit.TestcontainersConfiguration;
 
-@SpringBootTest(properties = {"pyeonit.push.scheduling-enabled=false",
+@SpringBootTest(properties = {"pyeonit.push.allowed-endpoint-host-suffixes=push.example.invalid", "pyeonit.push.scheduling-enabled=false",
         "pyeonit.push.vapid-public-key=test-placeholder", "pyeonit.push.vapid-private-key=test-placeholder",
         "pyeonit.push.vapid-subject=mailto:push@example.invalid"})
 @AutoConfigureMockMvc
@@ -141,6 +141,20 @@ class PushNotificationsTests {
         document(school, "APPROVED");
         jobs.newNotices();
         assertThat(sender.deliveries).hasSize(8);
+    }
+
+    @Test void revalidatesPreviouslyStoredEndpointsBeforeCallingSender() {
+        var unsafe = List.of("https://10.0.0.1/send", "https://localhost/send", "https://push.example.invalid:8443/send",
+                "https://push.example.invalid.attacker.example/send", "https://user@push.example.invalid/send");
+        unsafe.forEach(endpoint -> {
+            subscribe(active, endpoint);
+            sender.responses.put(endpoint, 410);
+        });
+        jobs.newNotices();
+        assertThat(sender.deliveries).extracting(Delivery::endpoint)
+                .containsExactlyInAnyOrder(endpoint(active), endpoint(suspended));
+        assertThat(db.queryForList("SELECT endpoint FROM push_subscriptions WHERE last_success_at IS NULL AND user_id=?",
+                String.class, active)).containsExactlyInAnyOrderElementsOf(unsafe);
     }
 
     @Test void subscriptionTransferDoesNotSendOldOwnersNotification() {
