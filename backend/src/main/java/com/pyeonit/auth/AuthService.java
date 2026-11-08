@@ -45,8 +45,12 @@ class AuthService {
 
 	private final SanctionBlocklist blocklist;
 
+	private final WithdrawalCleanup withdrawalCleanup;
+
 	AuthService(UserRepository users, SocialAccountRepository socials, JdbcTemplate jdbc,
-			@Value("${pyeonit.nickname.forbidden-words}") List<String> forbiddenWords, SanctionBlocklist blocklist) {
+			@Value("${pyeonit.nickname.forbidden-words}") List<String> forbiddenWords, SanctionBlocklist blocklist,
+			WithdrawalCleanup withdrawalCleanup) {
+		this.withdrawalCleanup = withdrawalCleanup;
 		this.blocklist = blocklist;
 		this.users = users;
 		this.socials = socials;
@@ -214,6 +218,7 @@ class AuthService {
 	void withdraw(User user) {
 		blocklist.recordOnWithdraw(user.id);
 		socials.deleteByUserId(user.id);
+		withdrawalCleanup.deletePersonalSettings(user.id);
 		user.nickname = null;
 		user.status = User.Status.WITHDRAWN;
 		user.withdrawnAt = OffsetDateTime.now();
