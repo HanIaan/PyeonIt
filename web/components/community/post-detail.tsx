@@ -18,7 +18,7 @@ import {
   Message,
   Tags,
   Pager,
-  authorName,
+  AuthorLink,
   dateLabel,
   button,
   primary,
@@ -52,7 +52,11 @@ function CommentRow({
     >
       <div className="flex flex-wrap gap-3 text-xs text-slate-500">
         <span>
-          {c.status === "DELETED" ? "삭제된 댓글" : authorName(c.author)}
+          {c.status === "DELETED" ? (
+            "삭제된 댓글"
+          ) : (
+            <AuthorLink author={c.author} />
+          )}
         </span>
         <time dateTime={c.createdAt}>{dateLabel(c.createdAt)}</time>
       </div>
@@ -224,7 +228,7 @@ export default function PostDetail({ id }: { id: number }) {
         <>
           <div className="flex flex-wrap gap-3 text-sm text-slate-500">
             <span>{post.board.name}</span>
-            <span>{authorName(post.author)}</span>
+            <AuthorLink author={post.author} />
             <time dateTime={post.createdAt}>{dateLabel(post.createdAt)}</time>
             <span>조회 {post.viewCount}</span>
           </div>
@@ -395,7 +399,7 @@ export default function PostDetail({ id }: { id: number }) {
             {parent && (
               <div className="flex items-center justify-between rounded-lg bg-indigo-50 p-3 text-sm text-indigo-800">
                 <span>
-                  {authorName(parent.author)}님에게 답글 · 답글은 한 단계만
+                  <AuthorLink author={parent.author} />님에게 답글 · 답글은 한 단계만
                   가능합니다.
                 </span>
                 <button

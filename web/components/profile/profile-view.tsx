@@ -1,0 +1,142 @@
+"use client";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ApiError } from "@/lib/api";
+import {
+  getProfile,
+  getProfilePosts,
+  getProfileComments,
+} from "@/lib/profile-api";
+import { pageNumber, searchError } from "@/lib/search-api";
+import { useUniversityResource } from "@/components/universities/shared";
+import {
+  Frame,
+  Message,
+  Pager,
+  dateLabel,
+  input,
+} from "@/components/community/shared";
+import { PostItems } from "@/components/community/post-list";
+export default function ProfileView({ id }: { id: number }) {
+  const params = useSearchParams(),
+    router = useRouter();
+  const tab = params.get("tab") === "comments" ? "comments" : "posts";
+  const page = pageNumber(params.get("page")),
+    size = Math.max(1, pageNumber(params.get("size"), 20, 100));
+  const profile = useUniversityResource(`profile:${id}`, () => getProfile(id));
+  const posts = useUniversityResource(
+    `profile-posts:${id}:${tab}:${page}:${size}`,
+    async () => {
+      if (tab !== "posts") return null;
+      await getProfile(id);
+      return getProfilePosts(id, page, size);
+    },
+  );
+  const comments = useUniversityResource(
+    `profile-comments:${id}:${tab}:${page}:${size}`,
+    async () => {
+      if (tab !== "comments") return null;
+      await getProfile(id);
+      return getProfileComments(id, page, size);
+    },
+  );
+  const result = tab === "posts" ? posts : comments;
+  const error = profile.error ?? result.error;
+  if (error instanceof ApiError && error.status === 404)
+    return (
+      <section>
+        <h1 className="text-xl font-semibold">탈퇴한 사용자입니다</h1>
+      </section>
+    );
+  function change(key: string, value: string) {
+    const next = new URLSearchParams(params);
+    next.set(key, value);
+    if (key !== "page") next.delete("page");
+    router.push(`/users/${id}?${next}`);
+  }
+  return (
+    <Frame title={profile.data?.nickname ?? "사용자 프로필"}>
+      <Message>{error ? searchError(error) : ""}</Message>
+      {!profile.done && <p role="status">프로필을 불러오는 중입니다…</p>}
+      {profile.data && (
+        <>
+          <p className="text-sm text-slate-500">
+            가입 {dateLabel(profile.data.createdAt)} · 글{" "}
+            {profile.data.postCount}개 · 댓글 {profile.data.commentCount}개
+          </p>
+          <nav aria-label="프로필 활동" className="flex border-b">
+            {[
+              ["posts", "글"],
+              ["comments", "댓글"],
+            ].map(([value, label]) => (
+              <Link
+                key={value}
+                href={`/users/${id}?${new URLSearchParams({ tab: value, size: String(size) })}`}
+                aria-current={tab === value ? "page" : undefined}
+                className={`min-h-11 flex-1 p-3 text-center ${tab === value ? "border-b-2 border-indigo-600 text-indigo-600" : "text-slate-500"}`}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <label className="block text-sm">
+            표시 개수
+            <select
+              className={input}
+              value={size}
+              onChange={(e) => change("size", e.target.value)}
+            >
+              {[...new Set([10, 20, 50, size])].map((n) => (
+                <option key={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          {!result.done && <p role="status">활동을 불러오는 중입니다…</p>}
+          {tab === "posts" && posts.data && (
+            <PostItems posts={posts.data.content} />
+          )}
+          {tab === "comments" && comments.data && (
+            <ul className="divide-y">
+              {comments.data.content.map((c) => (
+                <li key={c.commentId} className="space-y-2 py-5">
+                  <Link
+                    className="block space-y-2 hover:text-indigo-600"
+                    href={`/community/${c.postId}`}
+                  >
+                    <p className="line-clamp-3 whitespace-pre-wrap break-words">
+                      {c.bodyExcerpt}
+                      {c.bodyExcerpt.length >= 200 ? "…" : ""}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      원문: {c.postTitle}
+                    </p>
+                  </Link>
+                  <time
+                    className="text-xs text-slate-500"
+                    dateTime={c.createdAt}
+                  >
+                    {dateLabel(c.createdAt)}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          )}
+          {result.data && (
+            <>
+              {!result.data.content.length && (
+                <p className="py-10 text-center text-slate-500">
+                  공개된 {tab === "posts" ? "글" : "댓글"}이 없습니다.
+                </p>
+              )}
+              <Pager
+                page={page}
+                total={result.data.totalPages}
+                onChange={(n) => change("page", String(n))}
+              />
+            </>
+          )}
+        </>
+      )}
+    </Frame>
+  );
+}
