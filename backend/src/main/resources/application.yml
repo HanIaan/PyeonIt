@@ -44,3 +44,8 @@ pyeonit:
   nickname:
     # 사칭 금지어(포함 검사, 대소문자 무시). 쉼표 구분, PYEONIT_NICKNAME_FORBIDDEN_WORDS 로 덮어쓴다
     forbidden-words: ${PYEONIT_NICKNAME_FORBIDDEN_WORDS:운영자,관리자,운영진,운영팀,편잇,pyeonit,admin,official,공식}
+  search:
+    rate-limit:
+      window: ${PYEONIT_SEARCH_RATE_LIMIT_WINDOW:60s}
+      ip-requests: ${PYEONIT_SEARCH_RATE_LIMIT_IP_REQUESTS:60}
+      session-requests: ${PYEONIT_SEARCH_RATE_LIMIT_SESSION_REQUESTS:30}
