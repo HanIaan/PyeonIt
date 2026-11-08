@@ -7,18 +7,20 @@ import { ApiError } from "@/lib/api";
 import { isMock, setFavoriteUniversity } from "@/lib/universities-api";
 import {
   regions,
-  scheduleColors,
   scheduleLabels,
   scheduleTime,
 } from "@/lib/universities-display";
 import type { Schemas } from "@/lib/universities-api";
+import * as ui from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export const inputClass =
-  "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100";
-export const buttonClass =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:hover:bg-slate-800";
+  "min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 text-body text-ink";
+export const buttonClass = ui.buttonClass("secondary");
 export const cardClass =
-  "rounded-2xl border border-slate-200 p-4 sm:p-6 dark:border-slate-700";
+  "rounded-card border border-line bg-surface p-4 sm:p-6";
+export const linkClass =
+  "rounded-control text-label font-semibold text-ink underline underline-offset-4 hover:text-ink-2";
 
 type Resource<T> = { key: string; data?: T; error?: unknown; done: boolean };
 export function useUniversityResource<T>(key: string, load: () => Promise<T>) {
@@ -69,21 +71,17 @@ export function PageIntro({
   description,
 }: {
   title: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <div className="mb-6">
-      <p className="mb-2 text-sm font-semibold text-blue-600 dark:text-blue-400">
-        PyeonIt · 편입 정보
-      </p>
-      <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-      <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-        {description}
-      </p>
+      <h1 className="text-heading font-bold md:text-display">{title}</h1>
+      {description && (
+        <p className="mt-1 text-label text-ink-2">{description}</p>
+      )}
       {isMock && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          샘플 데이터 · 서강·성균관 2026학년도 예시입니다. 실제 모집 정보는 학교
-          원문을 확인하세요.
+        <p className="mt-3 text-label text-warning">
+          샘플 데이터 · 실제 모집 정보는 학교 원문을 확인하세요.
         </p>
       )}
     </div>
@@ -100,14 +98,17 @@ export function ResourceMessage({
 }) {
   if (!done)
     return (
-      <p role="status" className="py-8 text-sm">
+      <p role="status" className="py-8 text-label text-ink-2">
         불러오는 중…
       </p>
     );
   if (error)
     return (
-      <div role="alert" className="my-4 rounded-xl border border-red-200 p-4">
-        <p>
+      <div
+        role="alert"
+        className="my-4 rounded-card border border-danger/30 bg-surface p-4"
+      >
+        <p className="text-danger">
           {error instanceof Error
             ? error.message
             : "정보를 불러오지 못했습니다."}
@@ -125,12 +126,9 @@ export function ResourceMessage({
 }
 export function LoginNotice() {
   return (
-    <p className="my-3 text-sm">
+    <p className="my-3 text-label text-ink-2">
       관심학교 기능은 로그인이 필요합니다.{" "}
-      <Link
-        href="/login"
-        className="font-semibold text-blue-600 underline dark:text-blue-400"
-      >
+      <Link href="/login" className={linkClass}>
         로그인하기
       </Link>
     </p>
@@ -144,7 +142,7 @@ export function RegionSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-1.5 text-sm">
+    <label className="grid gap-1.5 text-label font-medium">
       지역
       <select
         className={inputClass}
@@ -169,13 +167,13 @@ export function SourceLinks({
   pageUrl: string | null;
 }) {
   return (
-    <div className="flex flex-wrap gap-4 text-sm font-medium text-blue-600 dark:text-blue-400">
+    <div className="flex flex-wrap gap-4">
       {fileUrl && (
         <a
           href={fileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline"
+          className={linkClass}
         >
           원본 PDF ↗
         </a>
@@ -185,13 +183,13 @@ export function SourceLinks({
           href={pageUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline"
+          className={linkClass}
         >
           학교 원문 ↗
         </a>
       )}
       {!fileUrl && !pageUrl && (
-        <span className="text-slate-500">원본 링크 미등록</span>
+        <span className="text-label text-ink-3">원본 링크 미등록</span>
       )}
     </div>
   );
@@ -202,23 +200,19 @@ export function ScheduleList({
   schedules: Schemas["Schedule"][];
 }) {
   return (
-    <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+    <ul className="divide-y divide-line">
       {schedules.map((s) => (
         <li key={s.id} className="py-4">
-          <span
-            className={`inline-block rounded-md px-2 py-1 text-xs font-semibold ${scheduleColors[s.type]}`}
-          >
+          <Badge tone={s.type === "APPLICATION" ? "lime" : "neutral"}>
             {scheduleLabels[s.type]}
-          </span>
-          <p className="mt-2 font-medium">{s.rawLabel}</p>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            {scheduleTime(s)}
-          </p>
-          {s.note && <p className="mt-1 text-sm">{s.note}</p>}
+          </Badge>
+          <p className="mt-2 font-semibold">{s.rawLabel}</p>
+          <p className="mt-0.5 text-label text-ink-2">{scheduleTime(s)}</p>
+          {s.note && <p className="mt-1 text-label">{s.note}</p>}
         </li>
       ))}
       {!schedules.length && (
-        <li className="py-4 text-sm text-slate-500">등록된 일정이 없습니다.</li>
+        <li className="py-4 text-label text-ink-3">등록된 일정이 없습니다.</li>
       )}
     </ul>
   );
@@ -262,19 +256,20 @@ export function FavoriteButton({
   return (
     <div>
       <button
-        className={buttonClass}
+        className={ui.buttonClass(favorite ? "primary" : "secondary")}
         disabled={pending || !session.done || !!session.error}
         onClick={toggle}
         aria-pressed={favorite}
         aria-label={`${favorite ? "관심학교 해제" : "관심학교 추가"}`}
       >
-        {favorite ? "★ 관심학교" : "☆ 관심학교 추가"}
+        <span aria-hidden="true">{favorite ? "★" : "☆"}</span>
+        {favorite ? "관심학교" : "관심학교 추가"}
         {pending ? " · 저장 중" : ""}
       </button>
       {message && (
-        <p role="alert" className="mt-2 text-sm text-red-600">
+        <p role="alert" className="mt-2 text-label text-danger">
           {message}{" "}
-          <Link href="/login" className="underline">
+          <Link href="/login" className="underline underline-offset-4">
             로그인 확인
           </Link>
         </p>

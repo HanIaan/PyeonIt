@@ -8,6 +8,7 @@ import {
   type Schemas,
 } from "@/lib/universities-api";
 import { koreanDate, regions } from "@/lib/universities-display";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   buttonClass,
   cardClass,
@@ -66,14 +67,9 @@ export default function NoticesView() {
   }
   return (
     <>
-      <PageIntro
-        title="모집 공고"
-        description="학교별 모집요강과 원서접수 일정을 한곳에서 확인하세요."
-      />
-      <div
-        className={`${cardClass} mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4`}
-      >
-        <label className="grid gap-1.5 text-sm">
+      <PageIntro title="모집 공고" />
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="grid gap-1.5 text-label font-medium">
           학년도
           <select
             className={inputClass}
@@ -92,7 +88,7 @@ export default function NoticesView() {
           value={filters.region ?? ""}
           onChange={(v) => change("region", v)}
         />
-        <label className="grid gap-1.5 text-sm">
+        <label className="grid gap-1.5 text-label font-medium">
           페이지당 공고
           <select
             className={inputClass}
@@ -108,10 +104,10 @@ export default function NoticesView() {
               ))}
           </select>
         </label>
-        <label className="flex min-h-11 items-center gap-2 self-end text-sm">
+        <label className="flex min-h-11 items-center gap-2 self-end text-label font-medium">
           <input
             type="checkbox"
-            className="h-4 w-4 accent-blue-600"
+            className="size-5 accent-ink"
             checked={!!filters.favoritesOnly}
             onChange={(e) =>
               change("favoritesOnly", e.target.checked ? "true" : "")
@@ -128,26 +124,26 @@ export default function NoticesView() {
       {!blocked && <ResourceMessage {...result} />}
       {data && (
         <>
-          <p className="mb-3 text-sm text-slate-500">
-            총 {data.totalElements}개 공고
+          <p className="mb-3 text-label text-ink-3">
+            총 {data.totalElements}개
           </p>
-          <ul className="grid gap-4">
+          <ul className="grid gap-3">
             {data.content.map((notice) => (
               <li key={notice.documentId} className={cardClass}>
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                <p className="text-caption text-ink-3">
                   {notice.university.name} {notice.university.campus} ·{" "}
                   {notice.academicYear}학년도
                 </p>
-                <h2 className="mt-2 text-lg font-semibold">
+                <h2 className="mt-1 text-title font-semibold">
                   <Link
                     href={`/universities/${notice.university.id}?academicYear=${notice.academicYear}`}
-                    className="hover:underline"
+                    className="rounded-control underline-offset-4 hover:underline"
                   >
                     {notice.title}
                   </Link>
                 </h2>
-                <p className="mb-4 mt-3 text-sm text-slate-600 dark:text-slate-400">
-                  원서접수:{" "}
+                <p className="mb-4 mt-2 text-label text-ink-2">
+                  <span className="font-semibold text-ink">원서접수</span>{" "}
                   {notice.applicationStartsAt
                     ? koreanDate(notice.applicationStartsAt)
                     : "일정 미등록"}
@@ -161,9 +157,7 @@ export default function NoticesView() {
             ))}
           </ul>
           {!data.content.length && (
-            <p className={`${cardClass} text-sm`}>
-              조건에 맞는 공고가 없습니다. 필터를 변경해 주세요.
-            </p>
+            <EmptyState>조건에 맞는 공고가 없습니다.</EmptyState>
           )}
           <nav
             aria-label="공고 페이지"
@@ -176,7 +170,7 @@ export default function NoticesView() {
             >
               이전
             </button>
-            <span className="text-sm">
+            <span className="min-w-16 text-center text-label tabular-nums text-ink-2">
               {filters.page + 1} / {Math.max(1, data.totalPages)}
             </span>
             <button
