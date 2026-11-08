@@ -1,6 +1,13 @@
 import type { components } from "./api-types";
 import { API_BASE_URL } from "./config";
 
+/** API가 반환한 루트 상대 URL을 웹과 다른 API 오리진에서 해석한다. */
+export function resolveApiUrl(url: string): string {
+  if (url.startsWith("/") && !url.startsWith("//"))
+    return API_BASE_URL.replace(/\/+$/, "") + url;
+  return url;
+}
+
 // 타입은 api/openapi.yaml 에서 생성한다(npm run gen:api). 예: api<Schemas["Me"]>("/api/me")
 export type Schemas = components["schemas"];
 export type ErrorResponse = Schemas["ErrorResponse"];

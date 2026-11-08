@@ -416,3 +416,11 @@ INSERT INTO schedules(document_id,type,raw_label,starts_at,ends_at,all_day,note)
   ('REGISTRATION','합격자 등록','2026-02-09 00:00:00+09','2026-02-11 16:00:00+09',true,NULL),
   ('RESULT_FINAL','추가합격자 발표','2026-02-12 00:00:00+09','2026-02-19 18:00:00+09',true,NULL),
   ('REGISTRATION','추가합격자 등록','2026-02-20 16:00:00+09','2026-02-20 16:00:00+09',false,NULL)) AS v(type,label,starts_at,ends_at,all_day,note) WHERE NOT EXISTS (SELECT 1 FROM schedules WHERE document_id=(SELECT id FROM admission_documents WHERE file_sha256='91e5561ee528a519eecf9f2b849238cfeb7202c534a5e0c2b10b68352296fd96') AND raw_label=v.label AND starts_at=v.starts_at::timestamptz);
+
+-- Q1b: development-only RANGE display fixture; distinct raw track preserves existing quotas.
+INSERT INTO quotas(document_id,department_id,track_id,raw_track_name,kind,count,raw_text)
+SELECT doc.id,d.id,NULL,'Q1b 범위 검증 전형','RANGE',NULL,'1명 이내'
+FROM admission_documents doc
+JOIN departments d ON d.university_id=doc.university_id AND d.level='MAJOR' AND d.name='컴퓨터공학과'
+WHERE doc.file_sha256='48ce417d96eba8f67bc96b12524416b2db184d0e2d6c51187229fe2b28d724af'
+ON CONFLICT(document_id,department_id,raw_track_name) DO NOTHING;

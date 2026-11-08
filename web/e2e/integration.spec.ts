@@ -76,7 +76,10 @@ test('Q1-2 공고 필터·학교 TO 계층·RANGE·미선발·캘린더', async 
         for (const quota of node.quotas) {
           if (quota.kind === 'RANGE') {
             rangeCount++;
-            await expect(row.getByRole('cell', { name: quota.rawText, exact: true })).toBeVisible();
+            expect(quota.count).toBeNull();
+            await test.step(`Q1b RANGE 원문 표시: ${school.name} ${node.name}`, async () => {
+              await expect(row.getByRole('cell', { name: quota.rawText, exact: true })).toBeVisible();
+            });
           }
           if (quota.kind === 'NOT_RECRUITING') {
             notRecruitingCount++;
@@ -88,7 +91,10 @@ test('Q1-2 공고 필터·학교 TO 계층·RANGE·미선발·캘린더', async 
     }
     await check(detail.guide.departments);
   }
-  test.info().annotations.push({ type: 'coverage', description: `RANGE ${rangeCount}, NOT_RECRUITING ${notRecruitingCount}; 0이면 해당 실제 데이터 부재로 검증 불가` });
+  await test.step('Q1b RANGE 사례를 실제로 검증했는지 확인', async () => {
+    expect(rangeCount, 'RANGE 시드가 적용된 전용 백엔드에서 실행해야 한다').toBeGreaterThan(0);
+  });
+  test.info().annotations.push({ type: 'coverage', description: `RANGE ${rangeCount}, NOT_RECRUITING ${notRecruitingCount}` });
   const detail = await api<S['UniversityDetail']>(context, `/api/universities/${notice.university.id}?academicYear=${notice.academicYear}`);
   const schedule = detail.guide?.schedules[0];
   if (!schedule) { test.info().annotations.push({ type: 'coverage', description: '일정 표시 검증 불가: 실제 일정 없음' }); return; }
@@ -146,7 +152,9 @@ test('Q1-4 커뮤니티 → 신고 → 관리자 처리·정지 → 탈퇴', asy
       const imagePath = testInfo.outputPath('q1.png');
       await writeFile(imagePath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=', 'base64'));
       await page.locator('input[type=file]').setInputFiles(imagePath);
-      await expect(page.getByRole('img', { name: '첨부 이미지 1', exact: true })).toBeVisible();
+      const preview = page.getByRole('img', { name: '첨부 이미지 1', exact: true });
+      await expect(preview).toBeVisible();
+      await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
       await page.getByRole('button', { name: '등록', exact: true }).click();
       await expect(page).toHaveURL(/\/community\/\d+$/);
       postId = Number(new URL(page.url()).pathname.split('/').pop());
