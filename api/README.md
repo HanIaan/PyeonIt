@@ -78,29 +78,54 @@ page/size 하나로 통일: `page`(0부터, 기본 0), `size`(기본 20, 최대 
 OAuth2 리다이렉트 쿼리 code: `OAUTH2_FAILED`, 연결 실패 `SOCIAL_ACCOUNT_IN_USE`·`PROVIDER_ALREADY_LINKED`.
 정지(SUSPENDED) 회원은 `x-suspended-blocked: true` 인 operation(글 작성·수정, 댓글 작성·수정, 추천·취소, 신고, 이미지 업로드)에서 403 `ACCOUNT_SUSPENDED`. 읽기·삭제·관심학교·로그아웃·탈퇴는 허용.
 
-## (d) 담당별 operation (총 39: B1 10 / B2 10 / B3 14 / B4 5)
+## (d) 담당별 operation (총 49: B1 10 / B2 9 / B3 14 / B4 5 / B5 6 / B6 5)
 
 | 담당 | 영역 | 패키지 | 마이그레이션 | 개수 |
 |---|---|---|---|---|
 | B1 | 인증·회원 | `com.pyeonit.auth` | V4 | 10 |
-| B2 | 학교·공고·관리자 요강 | `com.pyeonit.university`, `com.pyeonit.notice`, `com.pyeonit.admin.notice` | V5 | 10 |
+| B2 | 학교·공고·관리자 요강 | `com.pyeonit.university`, `com.pyeonit.notice`, `com.pyeonit.admin.notice` | V5 | 9 |
 | B3 | 커뮤니티 | `com.pyeonit.community` | V6 | 14 |
 | B4 | 관리자 신고·제재 | `com.pyeonit.admin.community` | V7(예약, 필요할 때만. reports·sanctions 는 V1에 이미 있음) | 5 |
+| B5 | 검색·프로필·학교 목록 | `com.pyeonit.search`, `com.pyeonit.profile` (권장) | V10(예약) | 6 |
+| B6 | 웹 푸시·알림 설정 | `com.pyeonit.push` | V9(예약) | 5 |
 
+- 마이그레이션 번호 예약: T7(수집 감시)=V8, B6=V9, B5=V10. 머지 순서와 번호가 어긋나면 머지 직전에 다음 빈 번호로 바꾼다(Flyway 순서 오류 방지).
+- B5는 posts·universities·users를 읽기 전용으로 조회한다. 엔티티 수정은 B5의 universities alias 컬럼/테이블 추가 마이그레이션만 허용한다.
+- `listUniversities`는 검색 계약 추가에 따라 B2에서 B5로 이관한다. 응답 필드는 유지한다.
 - B4 는 users.status 변경(정지·해제)이 필요하면 auth 패키지를 수정하지 말고 `SUPERSET_WORKER_BLOCKED` 로 보고한다.
 
 C0 가 이미 구현한 것: `getCsrfToken`(`config.CsrfController`), `logout`(SecurityConfig logout 필터), 공통 오류 처리(`config.GlobalExceptionHandler`).
 
 **B1** — `startOAuth2Login` GET /oauth2/authorization/{provider}, `getCsrfToken` GET /api/csrf, `logout` POST /api/auth/logout, `completeSignup` POST /api/auth/signup, `getMe` GET /api/me, `changeNickname` PATCH /api/me/nickname, `withdraw` DELETE /api/me, `startSocialLink` POST /api/me/social-accounts/{provider}, `unlinkSocialAccount` DELETE /api/me/social-accounts/{provider}, `devLogin` POST /api/dev/login (dev 전용)
 
-**B2** — `listUniversities` GET /api/universities, `getUniversity` GET /api/universities/{universityId}, `listNotices` GET /api/notices, `listCalendarEvents` GET /api/calendar, `listFavoriteUniversities` GET /api/me/favorite-universities, `addFavoriteUniversity` PUT ·`removeFavoriteUniversity` DELETE /api/me/favorite-universities/{universityId}, `listAdminAdmissionDocuments` GET /api/admin/admission-documents, `approveAdmissionDocument` POST …/{documentId}/approve, `rejectAdmissionDocument` POST …/{documentId}/reject
+**B2** — `getUniversity` GET /api/universities/{universityId}, `listNotices` GET /api/notices, `listCalendarEvents` GET /api/calendar, `listFavoriteUniversities` GET /api/me/favorite-universities, `addFavoriteUniversity` PUT ·`removeFavoriteUniversity` DELETE /api/me/favorite-universities/{universityId}, `listAdminAdmissionDocuments` GET /api/admin/admission-documents, `approveAdmissionDocument` POST …/{documentId}/approve, `rejectAdmissionDocument` POST …/{documentId}/reject
 
 **B3** — `listBoards` GET /api/boards, `listPosts` GET·`createPost` POST /api/posts, `getPost` GET·`updatePost` PUT·`deletePost` DELETE /api/posts/{postId}, `listComments` GET·`createComment` POST /api/posts/{postId}/comments, `updateComment` PATCH·`deleteComment` DELETE /api/comments/{commentId}, `likePost` PUT·`unlikePost` DELETE /api/posts/{postId}/like, `createReport` POST /api/reports, `uploadPostImage` POST /api/post-images
 
 **B4** — `listAdminReports` GET /api/admin/reports, `handleReport` POST /api/admin/reports/{reportId}/handle, `listSanctions` GET·`createSanction` POST /api/admin/sanctions, `releaseSanction` POST /api/admin/sanctions/{sanctionId}/release
 
+**B5** — `searchPosts` GET /api/posts/search, `searchUsers` GET /api/users/search, `listUniversities` GET /api/universities, `getUserProfile` GET /api/users/{userId}, `listUserPosts` GET /api/users/{userId}/posts, `listUserComments` GET /api/users/{userId}/comments
+
+**B6** — `getVapidPublicKey` GET /api/push/vapid-public-key, `upsertPushSubscription` PUT·`deletePushSubscription` DELETE /api/me/push-subscriptions, `getNotificationSettings` GET·`updateNotificationSettings` PUT /api/me/notification-settings
+
+## 검색·공개 프로필 (6차, B5·F5)
+
+- 게시물·작성자 검색의 필수 `q`는 2~50자, 학교 목록의 선택 `q`는 1~50자(빈 문자열 불가)이며 범위 위반은 400 `VALIDATION_FAILED`. 학교 검색은 학교명·별칭 부분 일치이며 초성 검색은 지원하지 않는다. 별칭 저장 모델은 응답에 노출하지 않는다.
+- 검색은 IP·세션별 요청 수 제한을 적용한다(익명도 IP 제한 적용). 게시물·작성자 검색 및 학교 목록의 `q` 사용 시 초과하면 429 `RATE_LIMITED`와 `Retry-After`(재시도까지 초)를 반환한다. 수치는 서버 설정값이며 기본 예시는 IP당 분당 60회·세션당 분당 60회이다.
+- 정지 사용자의 프로필·공개 글·공개 댓글은 열람 가능하며 사용자 검색 결과에서만 제외한다. 탈퇴 사용자는 프로필·글·댓글 목록 모두 404 `NOT_FOUND`이다.
+- 공개 프로필·활동 목록은 기존 게시판처럼 익명 접근 가능하다. 글은 삭제·숨김을, 댓글은 삭제 댓글과 삭제·숨김 글에 달린 댓글을 제외한다. 프로필의 글·댓글 수에도 동일 조건을 적용한다.
+- 글 검색·사용자 글 목록은 기존 `PostPage`/`PostSummary`를 재사용한다. 글 목록·상세·댓글의 작성자는 이미 `UserSummary.id`를 포함하므로 기존 응답 스키마를 변경하지 않는다. 탈퇴 작성자의 `nickname=null`, 삭제 댓글의 `author=null` 규칙도 유지한다.
+
+## 웹 푸시 (5차, B6·F6)
+
+- 푸시 비활성 환경의 공개키 조회는 404 `NOT_FOUND`이다.
+- 구독 업서트는 endpoint 기준 멱등이며 다른 회원의 endpoint는 현재 회원으로 이전한다. 삭제는 현재 회원 소유만 대상으로 하고 없으면 204이다. 웹은 로그아웃 직전에 endpoint 쿼리로 삭제를 호출한다. 구독·알림 설정은 로그인 필요, 정지 회원도 허용하며 쓰기는 CSRF 헤더가 필요하다.
+- `newNoticeEnabled`·`scheduleReminderEnabled`의 기본값은 모두 true이다. 관심학교의 새 공고(새로 APPROVED 된 요강)와 관심학교 일정 `startsAt`의 Asia/Seoul 날짜 전날(D-1)을 알림 대상으로 한다.
+
+푸시 payload는 JSON `{ title, body, url }`(모두 문자열)로 통일한다. 새 공고의 title은 `{학교명} 새 공고`, body는 요강 제목, url은 `/universities/{universityId}?academicYear={academicYear}`이다. D-1의 title은 `{학교명} 일정 D-1`, body는 `{일정 rawLabel} · {시작일 YYYY-MM-DD} 예정`(Asia/Seoul), url은 같은 학교·학년도 상세 경로이다. url은 웹 오리진 기준 상대 경로이며 service worker는 클릭 시 같은 오리진의 해당 URL 창을 활성화하거나 새로 연다. 백엔드와 service worker는 이 필드명·문구·URL 규칙을 함께 사용한다.
+
 ## (e) 명세 변경 절차
 
 1. 작업자(B·F)는 openapi.yaml 을 직접 고치지 않는다. 필요하면 `SUPERSET_WORKER_BLOCKED` 로 보고한다(무엇을, 왜, 영향받는 operation).
-2. 조율자가 C0 에 변경을 맡기고, C0 가 openapi.yaml·README 를 고친 뒤 `npm run gen:api` 로 `web/lib/api-types.ts` 를 다시 만들고 lint 를 통과시킨다.
+2. 조율자가 C0(또는 명시적으로 허가한 계약 작업 C1)에 변경을 맡기고, 계약 작업자가 openapi.yaml·README 를 고친 뒤 `npm run gen:api` 로 `web/lib/api-types.ts` 를 다시 만들고 lint 를 통과시킨다.
 3. 머지 후 작업자는 main 을 받아 이어서 한다.
