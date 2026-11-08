@@ -19,7 +19,13 @@ async function Content({ params }: Props) {
 }
 export default function Page(props: Props) {
   return (
-    <Suspense fallback={<p role="status">글을 불러오는 중입니다…</p>}>
+    <Suspense
+      fallback={
+        <p role="status" className="text-label text-ink-3">
+          불러오는 중…
+        </p>
+      }
+    >
       <Content {...props} />
     </Suspense>
   );

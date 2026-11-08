@@ -15,10 +15,12 @@ import {
   Message,
   Pager,
   input,
+  fieldLabel,
   button,
 } from "@/components/community/shared";
 import { PostItems } from "@/components/community/post-list";
 import SearchForm from "./search-form";
+import { EmptyState } from "@/components/ui/empty-state";
 export default function SearchView() {
   const params = useSearchParams(),
     router = useRouter();
@@ -58,54 +60,56 @@ export default function SearchView() {
     router.push(`/community/search?${next}`);
   }
   return (
-    <Frame title="커뮤니티 검색">
+    <Frame title="검색">
       <SearchForm />
-      {!users && (
-        <div className="grid grid-cols-2 gap-3">
-          <label>
-            게시판
-            <select
-              className={input}
-              value={boardId}
-              onChange={(e) => change("boardId", e.target.value)}
-            >
-              <option value={0}>전체 게시판</option>
-              {filters.data?.boards.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            학교 태그
-            <select
-              className={input}
-              value={universityId}
-              onChange={(e) => change("universityId", e.target.value)}
-            >
-              <option value={0}>모든 학교</option>
-              {filters.data?.schools.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
-      <label className="block text-sm">
-        표시 개수
-        <select
-          className={input}
-          value={size}
-          onChange={(e) => change("size", e.target.value)}
-        >
-          {[...new Set([10, 20, 50, size])].map((n) => (
-            <option key={n}>{n}</option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-wrap gap-3">
+        {!users && (
+          <>
+            <label className={`${fieldLabel} min-w-40 flex-1`}>
+              <span>게시판</span>
+              <select
+                className={input}
+                value={boardId}
+                onChange={(e) => change("boardId", e.target.value)}
+              >
+                <option value={0}>전체 게시판</option>
+                {filters.data?.boards.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={`${fieldLabel} min-w-40 flex-1`}>
+              <span>학교 태그</span>
+              <select
+                className={input}
+                value={universityId}
+                onChange={(e) => change("universityId", e.target.value)}
+              >
+                <option value={0}>모든 학교</option>
+                {filters.data?.schools.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        <label className={`${fieldLabel} w-28`}>
+          <span>표시 개수</span>
+          <select
+            className={input}
+            value={size}
+            onChange={(e) => change("size", e.target.value)}
+          >
+            {[...new Set([10, 20, 50, size])].map((n) => (
+              <option key={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+      </div>
       {!valid && <Message>검색어는 2~50자로 입력해 주세요.</Message>}
       <Message>
         {result.error
@@ -125,25 +129,28 @@ export default function SearchView() {
           다시 시도
         </button>
       ) : null}
-      {valid && !result.done && <p role="status">검색 중입니다…</p>}
+      {valid && !result.done && (
+        <p role="status" className="text-label text-ink-3">
+          검색 중…
+        </p>
+      )}
       {valid && data && (
         <>
-          <p role="status">검색 결과 {data.totalElements}건</p>
-          {users ? (
-            <ul className="divide-y">
+          <p role="status" className="text-caption text-ink-3">
+            검색 결과 {data.totalElements}건
+          </p>
+          {!data.content.length ? (
+            <EmptyState>검색 결과가 없습니다.</EmptyState>
+          ) : users ? (
+            <ul className="divide-y divide-line border-y border-line">
               {authors.data?.content.map((u) => (
-                <li key={u.id} className="py-4">
+                <li key={u.id} className="flex min-h-14 items-center">
                   <AuthorLink author={u} />
                 </li>
               ))}
             </ul>
           ) : (
             <PostItems posts={posts.data?.content ?? []} />
-          )}
-          {!data.content.length && (
-            <p className="py-10 text-center text-slate-500">
-              검색 결과가 없습니다.
-            </p>
           )}
           <Pager
             page={page}

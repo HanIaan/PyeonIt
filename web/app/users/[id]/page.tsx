@@ -12,7 +12,13 @@ async function Content({ params }: { params: Promise<{ id: string }> }) {
 }
 export default function Page(props: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<p>프로필을 불러오는 중입니다…</p>}>
+    <Suspense
+      fallback={
+        <p role="status" className="text-label text-ink-3">
+          불러오는 중…
+        </p>
+      }
+    >
       <Content {...props} />
     </Suspense>
   );

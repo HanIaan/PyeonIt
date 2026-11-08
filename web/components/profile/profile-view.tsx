@@ -15,7 +15,9 @@ import {
   Pager,
   dateLabel,
   input,
+  fieldLabel,
 } from "@/components/community/shared";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PostItems } from "@/components/community/post-list";
 export default function ProfileView({ id }: { id: number }) {
   const params = useSearchParams(),
@@ -44,8 +46,8 @@ export default function ProfileView({ id }: { id: number }) {
   const error = profile.error ?? result.error;
   if (error instanceof ApiError && error.status === 404)
     return (
-      <section>
-        <h1 className="text-xl font-semibold">탈퇴한 사용자입니다</h1>
+      <section className="mx-auto max-w-3xl">
+        <h1 className="text-heading font-bold">탈퇴한 사용자입니다</h1>
       </section>
     );
   function change(key: string, value: string) {
@@ -57,62 +59,81 @@ export default function ProfileView({ id }: { id: number }) {
   return (
     <Frame title={profile.data?.nickname ?? "사용자 프로필"}>
       <Message>{error ? searchError(error) : ""}</Message>
-      {!profile.done && <p role="status">프로필을 불러오는 중입니다…</p>}
+      {!profile.done && (
+        <p role="status" className="text-label text-ink-3">
+          불러오는 중…
+        </p>
+      )}
       {profile.data && (
         <>
-          <p className="text-sm text-slate-500">
-            가입 {dateLabel(profile.data.createdAt)} · 글{" "}
-            {profile.data.postCount}개 · 댓글 {profile.data.commentCount}개
-          </p>
-          <nav aria-label="프로필 활동" className="flex border-b">
+          <dl className="-mt-3 flex flex-wrap gap-x-4 gap-y-1 text-label text-ink-2">
             {[
-              ["posts", "글"],
-              ["comments", "댓글"],
-            ].map(([value, label]) => (
-              <Link
-                key={value}
-                href={`/users/${id}?${new URLSearchParams({ tab: value, size: String(size) })}`}
-                aria-current={tab === value ? "page" : undefined}
-                className={`min-h-11 flex-1 p-3 text-center ${tab === value ? "border-b-2 border-indigo-600 text-indigo-600" : "text-slate-500"}`}
-              >
-                {label}
-              </Link>
+              ["가입", dateLabel(profile.data.createdAt)],
+              ["글", `${profile.data.postCount}개`],
+              ["댓글", `${profile.data.commentCount}개`],
+            ].map(([k, v]) => (
+              <div key={k} className="flex gap-1.5">
+                <dt className="text-ink-3">{k}</dt>
+                <dd className="font-medium">{v}</dd>
+              </div>
             ))}
-          </nav>
-          <label className="block text-sm">
-            표시 개수
-            <select
-              className={input}
-              value={size}
-              onChange={(e) => change("size", e.target.value)}
+          </dl>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <nav
+              aria-label="프로필 활동"
+              className="inline-flex gap-1 rounded-pill border border-line bg-surface p-1"
             >
-              {[...new Set([10, 20, 50, size])].map((n) => (
-                <option key={n}>{n}</option>
+              {[
+                ["posts", "글"],
+                ["comments", "댓글"],
+              ].map(([value, label]) => (
+                <Link
+                  key={value}
+                  href={`/users/${id}?${new URLSearchParams({ tab: value, size: String(size) })}`}
+                  aria-current={tab === value ? "page" : undefined}
+                  className="inline-flex min-h-11 min-w-16 items-center justify-center rounded-pill px-4 text-label font-semibold text-ink-2 hover:text-ink aria-[current=page]:bg-lime aria-[current=page]:text-ink"
+                >
+                  {label}
+                </Link>
               ))}
-            </select>
-          </label>
-          {!result.done && <p role="status">활동을 불러오는 중입니다…</p>}
-          {tab === "posts" && posts.data && (
+            </nav>
+            <label className={`${fieldLabel} w-28`}>
+              <span>표시 개수</span>
+              <select
+                className={input}
+                value={size}
+                onChange={(e) => change("size", e.target.value)}
+              >
+                {[...new Set([10, 20, 50, size])].map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {!result.done && (
+            <p role="status" className="text-label text-ink-3">
+              불러오는 중…
+            </p>
+          )}
+          {tab === "posts" && !!posts.data?.content.length && (
             <PostItems posts={posts.data.content} />
           )}
-          {tab === "comments" && comments.data && (
-            <ul className="divide-y">
+          {tab === "comments" && !!comments.data?.content.length && (
+            <ul className="divide-y divide-line border-y border-line">
               {comments.data.content.map((c) => (
-                <li key={c.commentId} className="space-y-2 py-5">
+                <li key={c.commentId} className="space-y-2 py-4">
                   <Link
-                    className="block space-y-2 hover:text-indigo-600"
+                    className="group block space-y-1"
                     href={`/community/${c.postId}`}
                   >
-                    <p className="line-clamp-3 whitespace-pre-wrap break-words">
+                    <p className="line-clamp-3 whitespace-pre-wrap break-words text-body group-hover:underline">
                       {c.bodyExcerpt}
                       {c.bodyExcerpt.length >= 200 ? "…" : ""}
                     </p>
-                    <p className="text-sm text-slate-500">
-                      원문: {c.postTitle}
-                    </p>
+                    <p className="text-label text-ink-2">원문: {c.postTitle}</p>
                   </Link>
                   <time
-                    className="text-xs text-slate-500"
+                    className="text-caption text-ink-3"
                     dateTime={c.createdAt}
                   >
                     {dateLabel(c.createdAt)}
@@ -124,9 +145,9 @@ export default function ProfileView({ id }: { id: number }) {
           {result.data && (
             <>
               {!result.data.content.length && (
-                <p className="py-10 text-center text-slate-500">
+                <EmptyState>
                   공개된 {tab === "posts" ? "글" : "댓글"}이 없습니다.
-                </p>
+                </EmptyState>
               )}
               <Pager
                 page={page}

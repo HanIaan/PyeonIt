@@ -18,6 +18,7 @@ import {
   button,
   primary,
   input,
+  fieldLabel,
   handleError,
   useCommunityAuth,
 } from "./shared";
@@ -89,7 +90,9 @@ export default function PostEditor({ id }: { id?: number }) {
     <Frame title={id === undefined ? "새 글 쓰기" : "글 수정"}>
       <Message>{error}</Message>
       {auth.state === "loading" && (
-        <p role="status">로그인 상태를 확인 중입니다…</p>
+        <p role="status" className="text-label text-ink-3">
+          로그인 상태를 확인 중…
+        </p>
       )}
       {auth.state === "anonymous" && (
         <Message>
@@ -145,13 +148,13 @@ export default function PostEditor({ id }: { id?: number }) {
               auth.state !== "authenticated" ||
               auth.me?.status === "SUSPENDED"
             }
-            className="space-y-5 disabled:opacity-60"
+            className="space-y-6 disabled:opacity-60"
           >
-            <label className="block text-sm font-medium">
-              게시판
+            <label className={fieldLabel}>
+              <span>게시판</span>
               <select
                 required
-                className={`${input} mt-2`}
+                className={input}
                 value={boardId}
                 onChange={(e) => setBoardId(Number(e.target.value))}
               >
@@ -162,41 +165,40 @@ export default function PostEditor({ id }: { id?: number }) {
                 ))}
               </select>
             </label>
-            <label className="block text-sm font-medium">
-              제목
+            <label className={fieldLabel}>
+              <span>제목</span>
               <input
                 required
                 maxLength={200}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className={`${input} mt-2`}
-                placeholder="제목을 입력해 주세요 (최대 200자)"
+                className={input}
               />
             </label>
-            <label className="block text-sm font-medium">
-              본문
+            <label className={fieldLabel}>
+              <span>본문</span>
               <textarea
                 required
                 maxLength={20000}
                 rows={12}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                className={`${input} mt-2`}
-                placeholder="궁금한 점이나 나누고 싶은 이야기를 적어 주세요."
+                className={input}
               />
             </label>
             <fieldset>
-              <legend className="mb-2 text-sm font-medium">
+              <legend className="mb-2 text-label font-medium">
                 학교 태그 ({selected.length}/5)
               </legend>
               <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto">
                 {schools.map((u) => (
                   <label
                     key={u.id}
-                    className={`${button} gap-2 ${selected.includes(u.id) ? "border-indigo-600 text-indigo-600" : ""}`}
+                    className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-pill border border-line bg-surface px-3 text-label font-medium has-checked:border-ink has-checked:bg-lime has-disabled:opacity-45"
                   >
                     <input
                       type="checkbox"
+                      className="size-4 accent-ink"
                       checked={selected.includes(u.id)}
                       disabled={
                         !selected.includes(u.id) && selected.length >= 5
@@ -215,13 +217,13 @@ export default function PostEditor({ id }: { id?: number }) {
               </div>
             </fieldset>
             <div className="space-y-3">
-              <label className="block text-sm font-medium">
-                이미지 ({images.length}/10)
+              <label className={fieldLabel}>
+                <span>이미지 ({images.length}/10)</span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
                   multiple
-                  className="mt-2 block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-slate-50 file:px-4 file:py-3 file:text-slate-900"
+                  className="block w-full text-label text-ink-2 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-control file:border file:border-ink file:bg-transparent file:px-4 file:font-semibold file:text-ink"
                   onChange={(e) => {
                     const files = Array.from(e.target.files ?? []);
                     e.target.value = "";
@@ -229,20 +231,20 @@ export default function PostEditor({ id }: { id?: number }) {
                   }}
                 />
               </label>
-              <p className="text-xs text-slate-500">
+              <p className="text-caption text-ink-3">
                 JPG, PNG, WEBP, GIF · 한 장당 최대 5MB · 최대 10장
               </p>
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {images.map((image, index) => (
                   <li
                     key={image.id}
-                    className="space-y-2 rounded-xl border border-slate-200 p-2"
+                    className="space-y-2 rounded-card border border-line bg-surface p-2"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       alt={`첨부 이미지 ${index + 1}`}
                       src={resolveApiUrl(image.url)}
-                      className="h-28 w-full rounded-lg object-contain"
+                      className="h-28 w-full rounded-control object-contain"
                     />
                     <button
                       type="button"
@@ -272,8 +274,16 @@ export default function PostEditor({ id }: { id?: number }) {
               </Link>
             </div>
           </fieldset>
-          {uploading && <p role="status">이미지를 업로드하는 중입니다…</p>}
-          {busy && <p role="status">글을 저장하는 중입니다…</p>}
+          {uploading && (
+            <p role="status" className="text-label text-ink-3">
+              업로드 중…
+            </p>
+          )}
+          {busy && (
+            <p role="status" className="text-label text-ink-3">
+              저장 중…
+            </p>
+          )}
         </form>
       )}
     </Frame>
