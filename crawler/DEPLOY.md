@@ -12,7 +12,7 @@ Mac이 꺼져 있어도 감시가 계속되도록, 상시 켜진 Linux 서버(�
     ├─ Gemini REST (새 요강·변경 PDF일 때만)
     ├─ PDF 원본 → pdfs 볼륨 (/data/pdfs, storage_key = <sha256>.pdf)
     └─ Postgres (crawl_sources·crawl_seen_items·crawl_runs·admission_documents·extraction_runs)
-  backend (Spring Boot) → 기동 시 Flyway로 V1~V3 적용
+  backend (Spring Boot) → 기동 시 Flyway로 V1·V2·V4·V7·V8 적용
 ```
 
 ## 배포 순서 (Gemini 한도)
@@ -96,8 +96,9 @@ UPDATE admission_documents SET status = 'RETRY_PENDING', retry_count = 0, retry_
 
 ```sh
 cd crawler && .venv/bin/python -m pip install -e '.[test]'
-docker compose up -d postgres   # tests/monitor는 Postgres 임시 스키마에 V1~V3를 적용해 실행 (없으면 skip)
-.venv/bin/pytest                # 다른 주소는 TEST_DATABASE_URL
-DATABASE_URL=postgresql://pyeonit:pyeonit@localhost:5434/pyeonit .venv/bin/python -m pyeonit_crawler.monitor --once
+createdb -h localhost -p 5434 -U pyeonit pyeonit_t7_test
+TEST_DATABASE_URL=postgresql://pyeonit:pyeonit@localhost:5434/pyeonit_t7_test .venv/bin/pytest
+# monitor 실행 전 전용 DB에 전체 마이그레이션 적용 및 시드 필요
+DATABASE_URL=postgresql://pyeonit:pyeonit@localhost:5434/pyeonit_t7_test .venv/bin/python -m pyeonit_crawler.monitor --once
 # 일부 대학만: --only 서강대학교,연세대학교(서울)
 ```

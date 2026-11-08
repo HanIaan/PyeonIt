@@ -792,5 +792,101 @@ def test_monitor_uses_single_default_model():
     from pyeonit_crawler.monitor.__main__ import BrowserFetcher, build_parser
 
     model = build_parser().parse_args([]).model
-    assert model == DEFAULT_MODEL == "gemini-3.8-flash" and "lite" not in model
+    assert model == DEFAULT_MODEL == "gemini-3.8-flash"
     assert BrowserFetcher(None, YEAR).model == DEFAULT_MODEL
+
+
+@pytest.mark.parametrize(
+    "label", ["연세대학교병원", "연세대학교병원 서울", "연세대학교 미래캠퍼스"]
+)
+def test_campus_does_not_allow_school_name_suffix(label):
+    assert not core.school_matches(label, "연세대학교", "서울", "서울캠퍼스")
+
+
+@pytest.mark.parametrize("violations", [[], [{"quotaId": "RequestsPerDay"}]])
+def test_monitor_429_never_retries_inside_extractor(
+    conn, tmp_path, monkeypatch, violations
+):
+    from pyeonit_crawler.monitor.__main__ import BrowserFetcher
+
+    calls = []
+    real_client = httpx.Client
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(
+            429,
+            json={
+                "error": {
+                    "details": [
+                        {"violations": violations},
+                        {"retryDelay": "30s"},
+                    ]
+                }
+            },
+        )
+
+    def client(**kwargs):
+        return real_client(transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(httpx, "Client", client)
+    load_seed(conn, FIXTURE)
+    only(conn, "GUIDE_PAGE")
+    f = fetcher()
+    browser_fetcher = BrowserFetcher(None, YEAR)
+    f.extract = browser_fetcher.extract
+    run(conn, f, T0, tmp_path)
+    assert len(calls) == 1
+    assert calls[0].url.path.endswith("/models/gemini-3.8-flash:generateContent")
+    row = conn.execute(
+        "SELECT status, retry_count, retry_after FROM admission_documents"
+    ).fetchone()
+    assert row == {
+        "status": "QUOTA_WAIT",
+        "retry_count": 0,
+        "retry_after": T0 + timedelta(seconds=30),
+    }
+
+
+def test_queue_failure_is_isolated_per_item(conn, tmp_path, monkeypatch):
+    load_seed(conn, FIXTURE)
+    posts, download = two_posts(conn)
+    queue = core._queue
+
+    async def failing_queue(*args):
+        if args[5] == posts[0].url:
+            raise OSError("storage unavailable")
+        return await queue(*args)
+
+    monkeypatch.setattr(core, "_queue", failing_queue)
+    f = fetcher(posts, download=download)
+    for day in range(3):
+        run(conn, f, T0 + timedelta(days=day), tmp_path)
+    row = conn.execute(
+        "SELECT status, failures FROM crawl_seen_items WHERE url = %s", (posts[0].url,)
+    ).fetchone()
+    assert row == {"status": "NEEDS_REVIEW", "failures": 3}
+    assert doc(conn)["status"] == "EXTRACTED"
+    assert source(conn, "NOTICE_BOARD")["consecutive_failures"] == 0
+
+
+def test_queue_failure_can_recover_without_hash_dedup_skip(conn, tmp_path, monkeypatch):
+    load_seed(conn, FIXTURE)
+    posts, download = two_posts(conn)
+    queue = core._queue
+
+    async def fail(*args):
+        raise OSError("temporary storage failure")
+
+    monkeypatch.setattr(core, "_queue", fail)
+    f = fetcher(posts, download=download)
+    run(conn, f, T0, tmp_path)
+    rows = conn.execute("SELECT status, file_sha256 FROM crawl_seen_items").fetchall()
+    assert rows == [{"status": "RETRY", "file_sha256": None}] * 2
+    monkeypatch.setattr(core, "_queue", queue)
+    run(conn, f, T0 + timedelta(minutes=10), tmp_path)
+    assert f.extract.call_count == 2
+    assert {
+        r["status"] for r in conn.execute("SELECT status FROM admission_documents")
+    } == {"EXTRACTED"}

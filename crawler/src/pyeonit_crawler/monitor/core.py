@@ -18,7 +18,6 @@ from pypdf import PdfReader
 
 from ..detection import is_admission_guide
 from ..download import NoGuideError
-from ..gemini import quota_retry_delay
 from ..validation import validate_totals
 
 log = logging.getLogger(__name__)
@@ -88,9 +87,38 @@ def alert(
             log.error("알림 웹훅 전송 실패: %s", type(exc).__name__)
 
 
+class QuotaWait(Exception):
+    """공유 추출기의 즉시 재시도 전에 감시의 429를 루프로 돌려보낸다."""
+
+    def __init__(self, response: httpx.Response):
+        self.response = response
+        super().__init__("Gemini 429")
+
+
+def stop_on_quota(response: httpx.Response) -> None:
+    if response.status_code == 429:
+        response.read()
+        raise QuotaWait(response)
+
+
+def quota_wait_seconds(response: httpx.Response) -> float | None:
+    # 일일 한도 응답에도 retryDelay가 있으면 그대로 존중한다.
+    try:
+        details = response.json().get("error", {}).get("details", [])
+    except (ValueError, AttributeError):
+        details = []
+    values = [d.get("retryDelay", "") for d in details]
+    values.append(response.headers.get("Retry-After", ""))
+    for value in values:
+        if match := re.fullmatch(r"(\d+(?:\.\d+)?)s?", value):
+            if float(match[1]) > 0:
+                return float(match[1])
+    return None
+
+
 def gemini_error_kind(exc: Exception) -> str:
     """QUOTA(429) / PERMANENT(깨진 PDF·해석 불가 응답) / TRANSIENT(503·타임아웃 등)."""
-    if isinstance(exc, httpx.HTTPStatusError):
+    if isinstance(exc, (httpx.HTTPStatusError, QuotaWait)):
         code = exc.response.status_code
         if code == 429:
             return "QUOTA"
@@ -160,7 +188,10 @@ def school_matches(label, name: str, campus: str, first_page: str | None) -> boo
     if not campus:
         return rest == ""
     campus = re.sub(r"\s+", "", campus)
-    return campus in rest or campus in re.sub(r"\s+", "", first_page or "")
+    allowed = {campus, f"{campus}캠퍼스", f"({campus})", f"({campus}캠퍼스)"}
+    if rest:
+        return rest in allowed
+    return campus in re.sub(r"\s+", "", first_page or "")
 
 
 def interval(conn, university_id: int, year: int) -> timedelta:
@@ -245,6 +276,8 @@ async def _check_notice_board(conn, fetcher, src, year, storage_dir, now):
         if matched:
             try:
                 pdf = await fetcher.download(link.url)
+                await _queue(conn, src, pdf, title, title, link.url, year, storage_dir)
+                sha = pdf.sha256
             except NoGuideError as exc:
                 # PDF 없는 매칭 공지는 다음 주기에 다시 본다.
                 # shortcut: 7일 전에 목록에서 사라진 글은 판정하지 않는다. 누락 사례가 나오면 별도 점검 추가.
@@ -286,9 +319,6 @@ async def _check_notice_board(conn, fetcher, src, year, storage_dir, now):
                         title,
                         error,
                     )
-            else:
-                sha = pdf.sha256
-                await _queue(conn, src, pdf, title, title, link.url, year, storage_dir)
         # 처리 후에만 기록해서 실패한 게시글은 재시도 때 다시 처리된다.
         conn.execute(
             """INSERT INTO crawl_seen_items (source_id, item_key, url, title, matched,
@@ -447,7 +477,7 @@ async def _extract(conn, fetcher, src, doc, content, year, now) -> datetime | No
         kind = gemini_error_kind(exc)
         if kind == "QUOTA":
             # 할당량 대기는 retry_count(5주기 규칙)에 넣지 않는다.
-            seconds = quota_retry_delay(exc.response, max_delay=None)
+            seconds = quota_wait_seconds(exc.response)
             until = now + (
                 timedelta(seconds=seconds) if seconds else QUOTA_DEFAULT_WAIT
             )

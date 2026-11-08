@@ -1,4 +1,4 @@
-"""실제 Postgres(docker compose)의 임시 스키마에 V1~V3 마이그레이션을 적용해 테스트한다."""
+"""실제 Postgres(docker compose)의 임시 스키마에 V1·V2·V4·V7·V8 마이그레이션을 적용해 테스트한다."""
 
 import os
 import uuid
@@ -11,13 +11,13 @@ from psycopg.rows import dict_row
 MIGRATIONS = (
     Path(__file__).resolve().parents[3] / "backend/src/main/resources/db/migration"
 )
-DB_URL = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql://pyeonit:pyeonit@localhost:5434/pyeonit"
-)
+DB_URL = os.environ.get("TEST_DATABASE_URL")
 
 
 @pytest.fixture
 def conn():
+    if not DB_URL:
+        pytest.skip("TEST_DATABASE_URL에 전용 테스트 DB를 지정해야 합니다")
     try:
         admin = psycopg.connect(DB_URL, autocommit=True)
     except psycopg.OperationalError:

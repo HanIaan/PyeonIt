@@ -9,13 +9,14 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import psycopg
 from playwright.async_api import async_playwright
 from psycopg.rows import dict_row
 
 from ..download import DownloadedPDF, discover_links, download_pdf, fetch_attachment
 from ..gemini import DEFAULT_MODEL, GeminiExtractor, load_api_key
-from .core import due_sources, run_once, unknown_universities
+from .core import due_sources, run_once, stop_on_quota, unknown_universities
 from .seed import load_seed
 
 log = logging.getLogger("pyeonit_crawler.monitor")
@@ -56,7 +57,14 @@ class BrowserFetcher:
             # 감시는 체인 없이 단일 모델(backfill 전용 MODEL_CHAIN은 쓰지 않는다)
             self._extractor = GeminiExtractor(key, self.model)
             self._extractor.year = self.year
-        return self._extractor.extract(pdf)
+        with httpx.Client(
+            timeout=580, event_hooks={"response": [stop_on_quota]}
+        ) as client:
+            self._extractor.client = client
+            try:
+                return self._extractor.extract(pdf)
+            finally:
+                self._extractor.client = None
 
 
 def connect(url: str):
