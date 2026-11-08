@@ -7,9 +7,11 @@ import SearchForm from "@/components/search/search-form";
 import { searchUniversities } from "@/lib/search-api";
 import { listUniversities, type Schemas } from "@/lib/universities-api";
 import { regions } from "@/lib/universities-display";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   cardClass,
   FavoriteButton,
+  linkClass,
   PageIntro,
   RegionSelect,
   ResourceMessage,
@@ -33,60 +35,59 @@ export default function UniversitiesView() {
   );
   return (
     <>
-      <PageIntro
-        title="학교 찾기"
-        description="관심 있는 학교를 저장하고 학년도별 모집인원과 일정을 확인하세요."
-      />
+      <PageIntro title="학교 찾기" />
       <SearchForm schools />
-      <div className="mb-6 max-w-xs">
+      <div className="mb-6 sm:max-w-xs">
         <RegionSelect value={region} onChange={setRegion} />
       </div>
       <ResourceMessage {...session} />
       <ResourceMessage {...result} />
       {result.data && (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2">
           {result.data.map((u) => (
             <li
               key={u.id}
               className={`${cardClass} flex flex-col items-start gap-4`}
             >
               <div>
-                <p className="mb-2 text-xs text-slate-500">
+                <p className="text-caption text-ink-3">
                   {regions[u.region]} {u.campus}
                 </p>
-                <h2 className="text-xl font-semibold">
+                <h2 className="mt-1 text-title font-semibold">
                   <Link
                     href={`/universities/${u.id}`}
-                    className="hover:underline"
+                    className="rounded-control underline-offset-4 hover:underline"
                   >
                     {u.name} →
                   </Link>
                 </h2>
               </div>
-              <FavoriteButton
-                key={`${u.id}:${u.favorite}`}
-                id={u.id}
-                initialFavorite={u.favorite}
-                session={session}
-              />
-              {u.admissionUrl && (
-                <a
-                  href={u.admissionUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-blue-600 underline dark:text-blue-400"
-                >
-                  입학처 ↗
-                </a>
-              )}
+              <div className="mt-auto flex w-full flex-wrap items-center justify-between gap-3">
+                <FavoriteButton
+                  key={`${u.id}:${u.favorite}`}
+                  id={u.id}
+                  initialFavorite={u.favorite}
+                  session={session}
+                />
+                {u.admissionUrl && (
+                  <a
+                    href={u.admissionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={linkClass}
+                  >
+                    입학처 ↗
+                  </a>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       )}
       {result.data?.length === 0 && (
-        <p className={cardClass}>
+        <EmptyState>
           {q ? "검색 결과가 없습니다." : "해당 지역에 등록된 학교가 없습니다."}
-        </p>
+        </EmptyState>
       )}
     </>
   );
