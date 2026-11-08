@@ -34,8 +34,8 @@ class SearchProfileApiTests {
     withdrawn = person("SearchWithdrawn", "WITHDRAWN");
     school = school("성균관대학교", "SEOUL");
     otherSchool = school("OtherUniversity", "GYEONGGI");
-    db.update("insert into university_aliases(university_id,alias) values (?, '성대'), (?, 'SKKU')",
-        school, school);
+    db.update("insert into university_aliases(university_name,alias) values (?, 'SKKU')",
+        "성균관대학교");
     board = db.queryForObject("select id from boards where code='QUESTION'", Integer.class);
     otherBoard = db.queryForObject("select id from boards where code='FREE'", Integer.class);
   }
@@ -202,14 +202,16 @@ class SearchProfileApiTests {
   }
 
   @Test
-  void migrationInstallsExtensionIndexesAndSeedsOnlyExistingSchools() {
+  void migrationSeedsAliasesBeforeSchoolsExistAndMatchesLaterCampuses() throws Exception {
     assertThat(db.queryForObject("select count(*) from pg_extension where extname='pg_trgm'", Long.class)).isEqualTo(1);
     for (String name : List.of("posts_title_trgm_idx", "posts_body_trgm_idx", "universities_name_trgm_idx",
         "university_aliases_alias_trgm_idx", "users_nickname_trgm_idx")) {
       assertThat(db.queryForObject("select indexdef from pg_indexes where indexname=?", String.class, name))
           .contains("USING gin", "gin_trgm_ops");
     }
-    // Reapply the actual migration on a schema without V10 objects, after schools exist.
+    // Reapply the actual migration with no schools, just like a fresh database.
+    db.update("delete from universities");
+    assertThat(db.queryForObject("select count(*) from universities", Long.class)).isZero();
     db.execute("drop table university_aliases");
     for (String name : List.of("posts_title_trgm_idx", "posts_body_trgm_idx", "universities_name_trgm_idx",
         "users_nickname_trgm_idx")) db.execute("drop index " + name);
@@ -217,7 +219,21 @@ class SearchProfileApiTests {
         "db/migration/V10__search_indexes_and_university_aliases.sql");
     new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(resource)
         .execute(java.util.Objects.requireNonNull(db.getDataSource()));
-    assertThat(db.queryForObject("select alias from university_aliases where university_id=?", String.class, school))
-        .isEqualTo("성대");
+    assertThat(db.queryForObject("select count(*) from university_aliases", Long.class)).isEqualTo(20);
+    assertThat(db.queryForObject("""
+        select alias from university_aliases where university_name='성균관대학교'
+        """, String.class)).isEqualTo("성대");
+    mvc.perform(get("/api/universities").param("q", "성대"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+
+    long laterSchool = school("성균관대학교", "SEOUL");
+    db.update("""
+        insert into universities(name,campus,region) values ('성균관대학교','자연과학','GYEONGGI')
+        """);
+    mvc.perform(get("/api/universities").param("q", "성대"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+    mvc.perform(get("/api/universities").param("q", "성대").param("region", "SEOUL"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].id").value(laterSchool));
   }
 }

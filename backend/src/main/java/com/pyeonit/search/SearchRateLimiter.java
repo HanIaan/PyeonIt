@@ -13,6 +13,7 @@ public final class SearchRateLimiter {
   private final long windowMillis;
   private final int ipLimit;
   private final int sessionLimit;
+  private long nextCleanupAt = Long.MIN_VALUE;
 
   public SearchRateLimiter(Clock clock, Duration window, int ipLimit, int sessionLimit) {
     if (window.toMillis() < 1 || ipLimit < 1 || sessionLimit < 1)
@@ -26,7 +27,10 @@ public final class SearchRateLimiter {
   /** Returns retry seconds, or zero when accepted. Anonymous requests create no session. */
   public synchronized long acquire(String ip, String session) {
     long now = clock.millis();
-    counters.values().removeIf(w -> w.expiresAt <= now);
+    if (now >= nextCleanupAt) {
+      counters.values().removeIf(w -> w.expiresAt <= now);
+      nextCleanupAt = now + 1000;
+    }
     String ipKey = "ip:" + ip;
     String sessionKey = session == null ? null : "session:" + session;
     long retry = blocked(ipKey, ipLimit, now);
@@ -39,12 +43,12 @@ public final class SearchRateLimiter {
 
   private long blocked(String key, int limit, long now) {
     Window w = counters.get(key);
-    return w != null && w.count >= limit ? Math.max(1, (w.expiresAt - now + 999) / 1000) : 0;
+    return w != null && w.expiresAt > now && w.count >= limit ? Math.max(1, (w.expiresAt - now + 999) / 1000) : 0;
   }
 
   private void increment(String key, long now) {
     Window old = counters.get(key);
-    counters.put(key, old == null ? new Window(now + windowMillis, 1)
+    counters.put(key, old == null || old.expiresAt <= now ? new Window(now + windowMillis, 1)
         : new Window(old.expiresAt, old.count + 1));
   }
 

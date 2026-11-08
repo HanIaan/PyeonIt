@@ -26,7 +26,7 @@ public class UniversityController {
             """
             select id from universities u where (?::text is null or region=?)
             and (?::text is null or u.name ilike ? escape E'\\\\'
-              or exists(select 1 from university_aliases a where a.university_id=u.id
+              or exists(select 1 from university_aliases a where a.university_name=u.name
                 and a.alias ilike ? escape E'\\\\'))
             order by name,campus,id
             """,

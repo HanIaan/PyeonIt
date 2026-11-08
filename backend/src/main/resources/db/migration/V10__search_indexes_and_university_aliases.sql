@@ -5,15 +5,14 @@ CREATE INDEX universities_name_trgm_idx ON universities USING gin (name gin_trgm
 CREATE INDEX users_nickname_trgm_idx ON users USING gin (nickname gin_trgm_ops);
 
 CREATE TABLE university_aliases (
-    university_id BIGINT NOT NULL REFERENCES universities(id),
+    university_name VARCHAR(50) NOT NULL,
     alias VARCHAR(50) NOT NULL,
-    UNIQUE (university_id, alias)
+    UNIQUE (university_name, alias)
 );
 CREATE INDEX university_aliases_alias_trgm_idx ON university_aliases USING gin (alias gin_trgm_ops);
 
--- Match all campuses by exact school name; absent schools are skipped.
-INSERT INTO university_aliases (university_id, alias)
-SELECT u.id, a.alias FROM (VALUES
+-- Match all campuses by exact school name, including schools loaded after this migration.
+INSERT INTO university_aliases (university_name, alias) VALUES
     ('성균관대학교', '성대'),
     ('한국외국어대학교', '외대'),
     ('연세대학교', '연대'),
@@ -33,5 +32,4 @@ SELECT u.id, a.alias FROM (VALUES
     ('국민대학교', '국민대'),
     ('숭실대학교', '숭실대'),
     ('세종대학교', '세종대'),
-    ('단국대학교', '단대')
-) AS a(name, alias) JOIN universities u ON u.name = a.name;
+    ('단국대학교', '단대');

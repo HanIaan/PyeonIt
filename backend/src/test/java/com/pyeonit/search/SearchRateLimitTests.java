@@ -82,6 +82,22 @@ class SearchRateLimitTests {
   }
 
   @Test
+  void cleanupRunsAtMostOncePerSecondAndExpiredKeysStillResetImmediately() {
+    var clock = new MutableClock();
+    var limiter = new SearchRateLimiter(clock, Duration.ofMillis(100), 1, 1);
+    assertThat(limiter.acquire("expired", null)).isZero();
+    clock.now = clock.now.plusMillis(100);
+    assertThat(limiter.acquire("current", "session")).isZero();
+    assertThat(limiter.counterCount()).isEqualTo(3); // no full cleanup inside the first second
+    clock.now = clock.now.plusMillis(100);
+    assertThat(limiter.acquire("current", "session")).isZero(); // expired keys reset individually
+    assertThat(limiter.counterCount()).isEqualTo(3);
+    clock.now = clock.now.plusMillis(800);
+    assertThat(limiter.acquire("fresh", null)).isZero();
+    assertThat(limiter.counterCount()).isEqualTo(1); // next cleanup removes all idle keys
+  }
+
+  @Test
   void concurrentRequestsCannotExceedLimit() throws Exception {
     var limiter = new SearchRateLimiter(Clock.systemUTC(), Duration.ofMinutes(1), 7, 3);
     try (var executor = java.util.concurrent.Executors.newFixedThreadPool(8)) {
