@@ -1,6 +1,7 @@
 package com.pyeonit.community;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -102,17 +103,20 @@ class RetentionScheduledTasksTests {
     long recentComment = comment(published, null, "DELETED", CUTOFF.plusNanos(1000));
     long empty = post("DELETED", CUTOFF.minusSeconds(1));
     db.update("update posts set body='' where id=?", empty);
-    String emptyVersion = db.queryForObject("select xmin::text from posts where id=?", String.class, empty);
+    long purged = post("DELETED", CUTOFF.minusSeconds(1));
+    db.update("update posts set title='',body='' where id=?", purged);
+    String purgedVersion = db.queryForObject("select xmin::text from posts where id=?", String.class, purged);
     clear();
     for (long id : List.of(expired, empty)) {
       assertThat(db.queryForMap("select body,status,title from posts where id=?", id))
-          .containsEntry("body", "").containsEntry("status", "DELETED").containsEntry("title", "title");
+          .containsEntry("body", "").containsEntry("status", "DELETED").containsEntry("title", "");
+      assertThat(db.queryForObject("select updated_at from posts where id=?", Timestamp.class, id).toInstant())
+          .isEqualTo(id == expired ? CUTOFF.minusNanos(1000) : CUTOFF.minusSeconds(1));
     }
-    assertThat(db.queryForObject("select updated_at from posts where id=?", Timestamp.class, expired).toInstant())
-        .isEqualTo(CUTOFF.minusNanos(1000));
-    assertThat(db.queryForObject("select xmin::text from posts where id=?", String.class, empty)).isEqualTo(emptyVersion);
+    assertThat(db.queryForObject("select xmin::text from posts where id=?", String.class, purged)).isEqualTo(purgedVersion);
     for (long id : List.of(published, hidden, exact, recent))
-      assertThat(db.queryForObject("select body from posts where id=?", String.class, id)).isEqualTo("body");
+      assertThat(db.queryForMap("select title,body from posts where id=?", id))
+          .containsEntry("title", "title").containsEntry("body", "body");
     for (long id : List.of(reply, hiddenComment, exactComment, recentComment))
       assertThat(db.queryForObject("select body from comments where id=?", String.class, id)).isEqualTo("body");
     assertThat(db.queryForObject("select body from comments where id=?", String.class, root)).isEmpty();
@@ -125,8 +129,44 @@ class RetentionScheduledTasksTests {
         .andExpect(jsonPath("$.content[0].body").isEmpty())
         .andExpect(jsonPath("$.content[0].replies[0].id").value(reply));
     String version = db.queryForObject("select xmin::text from comments where id=?", String.class, root);
+    var postVersions = db.queryForList("select id,xmin::text from posts order by id");
     clear();
+    assertThat(db.queryForList("select id,xmin::text from posts order by id")).isEqualTo(postVersions);
     assertThat(db.queryForObject("select xmin::text from comments where id=?", String.class, root)).isEqualTo(version);
+  }
+
+  @Test
+  void purgedTitlesAreSafeInListsSearchProfilesCommentsAndAdminReports() throws Exception {
+    long published = post("PUBLISHED", CUTOFF.minusSeconds(1));
+    post("HIDDEN", CUTOFF.minusSeconds(1));
+    long deleted = post("DELETED", CUTOFF.minusSeconds(1));
+    long visibleComment = comment(published, null, "PUBLISHED", NOW);
+    comment(deleted, null, "PUBLISHED", NOW);
+    db.update("""
+        insert into reports(reporter_id,target_type,target_id,reason)
+        values (?,'POST',?,'SPAM')
+        """, user, deleted);
+    clear();
+    assertThat(db.queryForObject("select title from posts where id=?", String.class, deleted)).isEmpty();
+    for (String path : List.of("/api/posts", "/api/posts/search", "/api/users/" + user + "/posts")) {
+      mvc.perform(get(path).param("q", "title"))
+          .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+          .andExpect(jsonPath("$.content[0].id").value(published))
+          .andExpect(jsonPath("$.content[0].title").value("title"));
+    }
+    mvc.perform(get("/api/users/" + user))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.postCount").value(1))
+        .andExpect(jsonPath("$.commentCount").value(1));
+    mvc.perform(get("/api/users/" + user + "/comments"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.content[0].commentId").value(visibleComment))
+        .andExpect(jsonPath("$.content[0].postTitle").value("title"));
+    db.update("update users set role='ADMIN' where id=?", user);
+    mvc.perform(get("/api/admin/reports").with(user(Long.toString(user)).roles("ADMIN")))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.content[0].targetId").value(deleted))
+        .andExpect(jsonPath("$.content[0].target.status").value("DELETED"))
+        .andExpect(jsonPath("$.content[0].target.title").value(""));
   }
 
   @Test
@@ -202,7 +242,8 @@ class RetentionScheduledTasksTests {
     assertThat(imageExists(i)).isTrue();
     tasks = cleaner(1, 3, 1);
     clear(); tasks.deleteExpiredImages();
-    assertThat(db.queryForObject("select body from posts where id=?", String.class, p)).isEmpty();
+    assertThat(db.queryForMap("select title,body from posts where id=?", p))
+        .containsEntry("title", "").containsEntry("body", "");
     assertThat(db.queryForObject("select body from comments where id=?", String.class, c)).isEqualTo("body");
     assertThat(imageExists(i)).isTrue();
     tasks = cleaner(1, 1, 1);

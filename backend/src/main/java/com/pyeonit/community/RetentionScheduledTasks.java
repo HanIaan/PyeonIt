@@ -42,10 +42,10 @@ class RetentionScheduledTasks {
   public void clearExpiredBodies() {
     var cutoff = OffsetDateTime.now(clock).minusDays(bodyDays);
     // updated_at is the deletion timestamp: counter updates leave it unchanged and edits/hides
-    // require PUBLISHED. Never change it while clearing the body (image retention also uses it).
+    // require PUBLISHED. Never change it while clearing the title/body (image retention also uses it).
     int posts = db.update("""
-        update posts set body='' where id in (
-          select id from posts where status='DELETED' and body<>'' and updated_at < ?
+        update posts set title='',body='' where id in (
+          select id from posts where status='DELETED' and (body<>'' or title<>'') and updated_at < ?
           order by id limit ? for update skip locked
         )
         """, cutoff, batchSize);
