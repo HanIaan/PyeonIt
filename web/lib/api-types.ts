@@ -192,7 +192,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 학교 목록 (페이지네이션 없음, 전체) */
+        /**
+         * 학교 목록·검색 (페이지네이션 없음)
+         * @description q 생략 시 전체 목록. q는 학교명·별칭 부분 일치(초성 검색 없음), 1~50자이며 범위 위반 시 400 VALIDATION_FAILED.
+         *     q 사용 시 IP·세션별 요청 수를 제한하며 초과 시 429 RATE_LIMITED와 Retry-After(초)를 반환한다.
+         *     기존 region 필터와 함께 적용하며 응답 필드·이름순 정렬은 유지한다.
+         *
+         */
         get: operations["listUniversities"];
         put?: never;
         post?: never;
@@ -603,6 +609,198 @@ export interface paths {
          * @description endsAt=now 로 종료한다(이력 보존). 다른 활성 SUSPEND·BAN 이 없으면 회원 status=ACTIVE.
          */
         post: operations["releaseSanction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/posts/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 게시물 제목·본문 검색
+         * @description q는 제목·본문 부분 일치 검색어(2~50자), 범위 위반 시 400 VALIDATION_FAILED.
+         *     boardId·universityId 필터는 AND로 적용한다. PUBLISHED만 반환하여 삭제·숨김 글을 제외한다.
+         *     createdAt 내림차순, 동률이면 id 내림차순으로 고정한다. 익명 접근 가능.
+         *     IP·세션별 요청 수를 제한하며 초과 시 429 RATE_LIMITED와 Retry-After(초)를 반환한다.
+         *
+         */
+        get: operations["searchPosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 작성자 닉네임 검색
+         * @description 닉네임 대소문자를 구분하지 않는 부분 일치 검색. q는 2~50자, 범위 위반 시 400 VALIDATION_FAILED.
+         *     탈퇴(WITHDRAWN)·정지(SUSPENDED) 사용자는 제외한다. id 오름차순 고정. 익명 접근 가능.
+         *     IP·세션별 요청 수를 제한하며 초과 시 429 RATE_LIMITED와 Retry-After(초)를 반환한다.
+         *
+         */
+        get: operations["searchUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 사용자 공개 프로필 조회
+         * @description 탈퇴(WITHDRAWN) 또는 없는 사용자는 404 NOT_FOUND. 정지(SUSPENDED) 사용자는 열람 가능. 익명 접근 가능.
+         *     postCount·commentCount는 각 공개 활동 목록과 동일한 제외 조건으로 계산한다.
+         *
+         */
+        get: operations["getUserProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{userId}/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 사용자가 작성한 공개 글
+         * @description 탈퇴(WITHDRAWN) 또는 없는 사용자는 404 NOT_FOUND. 정지(SUSPENDED) 사용자는 열람 가능. 익명 접근 가능.
+         *     PUBLISHED 글만 반환(삭제·숨김 제외). createdAt 내림차순, 동률이면 id 내림차순 고정.
+         *
+         */
+        get: operations["listUserPosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/users/{userId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 사용자가 작성한 공개 댓글
+         * @description 탈퇴(WITHDRAWN) 또는 없는 사용자는 404 NOT_FOUND. 정지(SUSPENDED) 사용자는 열람 가능. 익명 접근 가능.
+         *     삭제 댓글과 삭제·숨김 글에 달린 댓글을 제외하며 답글도 개별 항목으로 포함한다.
+         *     createdAt 내림차순, 동률이면 commentId 내림차순 고정.
+         *
+         */
+        get: operations["listUserComments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/push/vapid-public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * VAPID 공개키 조회
+         * @description 익명 접근 가능. 푸시 비활성 환경은 404 NOT_FOUND를 반환한다.
+         *
+         */
+        get: operations["getVapidPublicKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/push-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 웹 푸시 구독 업서트
+         * @description 정지 회원도 허용한다. 같은 endpoint는 멱등 업서트하며 다른 회원 소유라면 현재 회원으로 이전한다.
+         *     이전 후 기존 소유자에게는 해당 endpoint로 발송하지 않는다.
+         *
+         */
+        put: operations["upsertPushSubscription"];
+        post?: never;
+        /**
+         * 웹 푸시 구독 삭제
+         * @description 현재 회원 소유의 endpoint만 삭제한다. 없거나 다른 회원 소유이면 변경 없이 204(멱등).
+         *     정지 회원도 허용한다. 웹은 로그아웃 직전에 이 API를 호출하여 구독을 지운다.
+         *
+         */
+        delete: operations["deletePushSubscription"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/notification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 알림 설정 조회
+         * @description 정지 회원도 허용한다. 관심학교의 새 공고(새로 APPROVED 된 요강)와 관심학교 일정 D-1 알림을 제어한다.
+         *     설정이 없으면 두 필드 모두 true를 기본값으로 반환한다. D-1은 일정 startsAt의 Asia/Seoul 날짜 전날이다.
+         *
+         */
+        get: operations["getNotificationSettings"];
+        /**
+         * 알림 설정 변경
+         * @description 정지 회원도 허용한다. 관심학교의 새 공고(새로 APPROVED 된 요강)와 관심학교 일정 D-1 알림을 제어한다.
+         *     설정이 없으면 두 필드 모두 true를 기본값으로 반환한다. D-1은 일정 startsAt의 Asia/Seoul 날짜 전날이다.
+         *     두 필드를 모두 받아 전체 설정을 멱등 저장하고 저장 결과를 반환한다.
+         *
+         */
+        put: operations["updateNotificationSettings"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1047,6 +1245,64 @@ export interface components {
              */
             endsAt?: string | null;
         };
+        UserSummaryPage: components["schemas"]["PageMeta"] & {
+            content: components["schemas"]["UserSummary"][];
+        };
+        UserProfile: {
+            /** Format: int64 */
+            id: number;
+            nickname: string;
+            /**
+             * Format: date-time
+             * @description 가입 시각
+             */
+            createdAt: string;
+            /** Format: int64 */
+            postCount: number;
+            /** Format: int64 */
+            commentCount: number;
+        };
+        UserCommentSummary: {
+            /** Format: int64 */
+            commentId: number;
+            /** @description 일반 텍스트 본문 앞 최대 200자 (말줄임표는 웹이 표시) */
+            bodyExcerpt: string;
+            /** Format: int64 */
+            postId: number;
+            postTitle: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UserCommentPage: components["schemas"]["PageMeta"] & {
+            content: components["schemas"]["UserCommentSummary"][];
+        };
+        VapidPublicKey: {
+            /** @description Base64url 인코딩된 VAPID 공개키 (비밀키는 노출하지 않음) */
+            publicKey: string;
+        };
+        PushSubscriptionRequest: {
+            /** Format: uri */
+            endpoint: string;
+            keys: {
+                /** @description Base64url 인코딩된 공개키 */
+                p256dh: string;
+                /** @description Base64url 인코딩된 인증 시크릿 */
+                auth: string;
+            };
+            userAgent?: string;
+        };
+        NotificationSettings: {
+            /**
+             * @description 관심학교 새 공고 (새로 APPROVED 된 요강)
+             * @default true
+             */
+            newNoticeEnabled: boolean;
+            /**
+             * @description 관심학교 일정 startsAt의 Asia/Seoul 날짜 D-1 알림
+             * @default true
+             */
+            scheduleReminderEnabled: boolean;
+        };
     };
     responses: {
         /** @description `INVALID_REQUEST` 형식 오류, `VALIDATION_FAILED` 값 검증 실패(fieldErrors) */
@@ -1125,6 +1381,9 @@ export interface components {
         };
     };
     parameters: {
+        /** @description 부분 일치 검색어 (2~50자, 범위 위반 시 400 VALIDATION_FAILED) */
+        SearchQuery: string;
+        UserIdPath: number;
         /** @description 0부터 시작하는 페이지 번호 */
         Page: number;
         /** @description 페이지 크기 (최대 100, 초과 시 400) */
@@ -1440,6 +1699,8 @@ export interface operations {
         parameters: {
             query?: {
                 region?: components["parameters"]["RegionQuery"];
+                /** @description 학교명·별칭 부분 일치 검색어 (생략 가능, 빈 문자열 불가) */
+                q?: string;
             };
             header?: never;
             path?: never;
@@ -1457,6 +1718,7 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
         };
     };
     getUniversity: {
@@ -2271,6 +2533,268 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+        };
+    };
+    searchPosts: {
+        parameters: {
+            query: {
+                /** @description 부분 일치 검색어 (2~50자, 범위 위반 시 400 VALIDATION_FAILED) */
+                q: components["parameters"]["SearchQuery"];
+                boardId?: number;
+                /** @description 이 학교가 태그된 글 */
+                universityId?: number;
+                /** @description 0부터 시작하는 페이지 번호 */
+                page?: components["parameters"]["Page"];
+                /** @description 페이지 크기 (최대 100, 초과 시 400) */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 게시물 제목·본문 검색 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    searchUsers: {
+        parameters: {
+            query: {
+                /** @description 부분 일치 검색어 (2~50자, 범위 위반 시 400 VALIDATION_FAILED) */
+                q: components["parameters"]["SearchQuery"];
+                /** @description 0부터 시작하는 페이지 번호 */
+                page?: components["parameters"]["Page"];
+                /** @description 페이지 크기 (최대 100, 초과 시 400) */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 작성자 닉네임 검색 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSummaryPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getUserProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["UserIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사용자 공개 프로필 조회 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listUserPosts: {
+        parameters: {
+            query?: {
+                /** @description 0부터 시작하는 페이지 번호 */
+                page?: components["parameters"]["Page"];
+                /** @description 페이지 크기 (최대 100, 초과 시 400) */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path: {
+                userId: components["parameters"]["UserIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사용자가 작성한 공개 글 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listUserComments: {
+        parameters: {
+            query?: {
+                /** @description 0부터 시작하는 페이지 번호 */
+                page?: components["parameters"]["Page"];
+                /** @description 페이지 크기 (최대 100, 초과 시 400) */
+                size?: components["parameters"]["Size"];
+            };
+            header?: never;
+            path: {
+                userId: components["parameters"]["UserIdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사용자가 작성한 공개 댓글 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserCommentPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getVapidPublicKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description VAPID 공개키 조회 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VapidPublicKey"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    upsertPushSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description 웹 푸시 구독 업서트 성공 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    deletePushSubscription: {
+        parameters: {
+            query: {
+                /** @description 삭제할 PushSubscription endpoint */
+                endpoint: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 웹 푸시 구독 삭제 성공 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 알림 설정 조회 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateNotificationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationSettings"];
+            };
+        };
+        responses: {
+            /** @description 알림 설정 변경 성공 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettings"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
 }
