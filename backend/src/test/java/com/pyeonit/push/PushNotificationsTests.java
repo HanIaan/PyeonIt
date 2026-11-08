@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import java.time.*;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,11 @@ class PushNotificationsTests {
     record Delivery(String endpoint, PushSender.Payload payload) {}
     @Autowired JdbcTemplate db;
     @Autowired PushNotifications jobs;
+    @Autowired PushService service;
+    @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
+    @Autowired PushConfiguration.Properties properties;
+    @Autowired PushEndpointPolicy endpoints;
+    @Autowired Clock clock;
     @Autowired FakeSender sender;
     @Autowired MockMvc mvc;
     long school;
@@ -76,15 +82,15 @@ class PushNotificationsTests {
     }
     String endpoint(long user) { return "https://push.example.invalid/" + user; }
     void subscribe(long user, String endpoint) {
-        db.update("INSERT INTO push_subscriptions(user_id, endpoint, p256dh, auth) VALUES (?,?,'fake-public','fake-auth')", user, endpoint);
+        db.update("INSERT INTO push_subscriptions(user_id, endpoint, p256dh, auth, created_at) VALUES (?,?,'fake-public','fake-auth',?)", user, endpoint, Timestamp.from(Instant.parse("2026-11-07T15:00:00Z")));
     }
     void favorite(long user, long university) {
         db.update("INSERT INTO favorite_universities(user_id, university_id) VALUES (?,?)", user, university);
     }
     long document(long university, String status) {
         return db.queryForObject("""
-            INSERT INTO admission_documents(university_id,academic_year,title,file_sha256,storage_key,status)
-            VALUES (?,2027,'2027 편입 모집요강',?, 'test-only', ?) RETURNING id
+            INSERT INTO admission_documents(university_id,academic_year,title,file_sha256,storage_key,status,reviewed_at)
+            VALUES (?,2027,'2027 편입 모집요강',?, 'test-only', ?, '2026-11-07T15:30:00Z') RETURNING id
             """, Long.class, university, UUID.randomUUID().toString().replace("-", "").repeat(2), status);
     }
     long schedule(long doc, String start, boolean allDay) {
@@ -105,6 +111,103 @@ class PushNotificationsTests {
         assertThat(sender.deliveries).hasSize(4);
         assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(4);
         assertThat(db.queryForObject("SELECT count(*) FROM push_subscriptions WHERE user_id=?", Integer.class, withdrawn)).isZero();
+    }
+
+    @Test void onlyStrictlyLaterApprovalsAreEligibleAndSkippedNoticesAreNotLogged() {
+        db.update("UPDATE admission_documents SET reviewed_at='2026-11-07T14:59:59Z' WHERE id=?", document);
+        long equal = document(school, "APPROVED");
+        db.update("UPDATE admission_documents SET reviewed_at='2026-11-07T15:00:00Z' WHERE id=?", equal);
+        long missing = document(school, "APPROVED");
+        db.update("UPDATE admission_documents SET reviewed_at=NULL WHERE id=?", missing);
+        jobs.newNotices();
+        assertThat(sender.deliveries).isEmpty();
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isZero();
+        document(school, "APPROVED");
+        jobs.newNotices();
+        assertThat(sender.deliveries).extracting(Delivery::endpoint)
+                .containsExactlyInAnyOrder(endpoint(active), endpoint(suspended));
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(2);
+    }
+
+    @Test void eachSubscriptionUsesItsOwnCutoffEvenWithoutAPreviousPoll() {
+        String later = "https://push.example.invalid/later";
+        subscribe(active, later);
+        db.update("UPDATE push_subscriptions SET created_at='2026-11-07T15:31:00Z' WHERE endpoint=?", later);
+        jobs.newNotices(); jobs.newNotices();
+        assertThat(sender.deliveries).extracting(Delivery::endpoint)
+                .containsExactlyInAnyOrder(endpoint(active), endpoint(suspended));
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(2);
+    }
+
+    @Test void upsertAndOwnershipTransferResetCutoffAndSkipOlderApprovals() {
+        var keys = new PushController.Keys("fake-public", "fake-auth");
+        service.subscribe(active, new PushController.SubscriptionRequest(endpoint(active), keys, null));
+        service.subscribe(active, new PushController.SubscriptionRequest(endpoint(suspended), keys, null));
+        jobs.newNotices();
+        assertThat(sender.deliveries).isEmpty();
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isZero();
+        assertThat(db.queryForList("SELECT created_at FROM push_subscriptions WHERE user_id=?", Timestamp.class, active))
+                .containsOnly(Timestamp.from(clock.instant()));
+    }
+
+    @Test void deletingAndResubscribingDoesNotDeliverOlderApprovals() {
+        service.delete(active, endpoint(active));
+        service.subscribe(active, new PushController.SubscriptionRequest(endpoint(active),
+                new PushController.Keys("fake-public", "fake-auth"), null));
+        jobs.newNotices();
+        assertThat(sender.deliveries).extracting(Delivery::endpoint).containsExactly(endpoint(suspended));
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log WHERE user_id=?", Integer.class, active)).isZero();
+    }
+
+    @Test void configurableIndividualLimitControlsBundling() {
+        document(school, "APPROVED");
+        var limited = new PushNotifications(db, transactions, sender, properties, clock,
+                ZoneId.of("Asia/Seoul"), endpoints, 1);
+        limited.newNotices(); limited.newNotices();
+        assertThat(sender.deliveries).hasSize(2).allSatisfy(d -> assertThat(d.payload()).isEqualTo(
+                new PushSender.Payload("관심학교 새 공고 2건", "관심학교의 새 공고가 2건 올라왔어요", "/notices")));
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(4);
+    }
+
+    @Test void threeNoticesAreSentIndividuallyAndAllAreLoggedOnce() {
+        document(school, "APPROVED"); document(school, "APPROVED");
+        jobs.newNotices(); jobs.newNotices();
+        assertThat(sender.deliveries).hasSize(6).allSatisfy(delivery ->
+                assertThat(delivery.payload().url()).isEqualTo("/universities/" + school + "?academicYear=2027"));
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(6);
+    }
+
+    @Test void fourNoticesAreBundledPerMemberAndAllAreLoggedWithoutRedelivery() {
+        document(school, "APPROVED"); document(school, "APPROVED"); document(school, "APPROVED");
+        document(school, "NEEDS_REVIEW");
+        document(otherSchool, "APPROVED"); // Must not inflate the target school's bundle count.
+        jobs.newNotices(); jobs.newNotices();
+        assertThat(sender.deliveries).hasSize(3);
+        assertThat(sender.deliveries.stream().filter(d -> !d.endpoint().equals(endpoint(outsider))))
+                .hasSize(2).allSatisfy(d -> assertThat(d.payload()).isEqualTo(new PushSender.Payload(
+                        "관심학교 새 공고 4건", "관심학교의 새 공고가 4건 올라왔어요", "/notices")));
+        assertThat(sender.deliveries).extracting(Delivery::endpoint).doesNotContain(endpoint(off), endpoint(withdrawn));
+        for (long user : new long[]{active, suspended}) {
+            assertThat(db.queryForList("SELECT ref_key FROM notification_log WHERE user_id=?", Long.class, user))
+                    .containsExactlyInAnyOrderElementsOf(db.queryForList(
+                            "SELECT id FROM admission_documents WHERE university_id=? AND status='APPROVED'", Long.class, school));
+        }
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(9);
+    }
+
+    @Test void bundleCountsOnlyNoticesAfterEachSubscriptionsCutoff() {
+        document(school, "APPROVED"); document(school, "APPROVED");
+        String later = "https://push.example.invalid/later";
+        subscribe(active, later);
+        db.update("UPDATE push_subscriptions SET created_at='2026-11-07T15:31:00Z' WHERE endpoint=?", later);
+        long newer = document(school, "APPROVED");
+        db.update("UPDATE admission_documents SET reviewed_at='2026-11-07T15:32:00Z' WHERE id=?", newer);
+        jobs.newNotices(); jobs.newNotices();
+        assertThat(sender.deliveries).hasSize(3);
+        assertThat(sender.deliveries.stream().filter(d -> d.endpoint().equals(later)))
+                .singleElement().satisfies(d -> assertThat(d.payload()).isEqualTo(new PushSender.Payload(
+                        "관심학교 새 공고 1건", "관심학교의 새 공고가 1건 올라왔어요", "/notices")));
+        assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(8);
     }
 
     @Test void dMinusOneUsesKoreanDateIncludesAllDayAndExcludesBothBoundaries() {

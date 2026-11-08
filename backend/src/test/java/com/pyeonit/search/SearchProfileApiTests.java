@@ -202,6 +202,41 @@ class SearchProfileApiTests {
   }
 
   @Test
+  void exactAliasRanksBeforeNameSubstring() throws Exception {
+    long hansung = school("한성대학교", "SEOUL");
+    mvc.perform(get("/api/universities").param("q", "성대"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[0].id").value(school))
+        .andExpect(jsonPath("$[1].id").value(hansung));
+  }
+
+  @Test
+  void exactThenPrefixThenSubstringWithNameOrderWithinGroup() throws Exception {
+    long exact = school("서울", "SEOUL");
+    long prefixOne = school("서울가대학교", "SEOUL");
+    long prefixTwo = school("서울나대학교", "SEOUL");
+    long partial = school("가서울대학교", "SEOUL");
+    mvc.perform(get("/api/universities").param("q", "서울"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(4))
+        .andExpect(jsonPath("$[0].id").value(exact))
+        .andExpect(jsonPath("$[1].id").value(prefixOne))
+        .andExpect(jsonPath("$[2].id").value(prefixTwo))
+        .andExpect(jsonPath("$[3].id").value(partial));
+  }
+
+  @Test
+  void exactAliasIgnoresCaseAndRanksBeforeNamePrefixAndPartialAlias() throws Exception {
+    long prefix = school("SKKU University", "SEOUL");
+    long partialAlias = school("가대학교", "SEOUL");
+    db.update("insert into university_aliases(university_name,alias) values ('가대학교','xSKKUx')");
+    mvc.perform(get("/api/universities").param("q", "skku"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3))
+        .andExpect(jsonPath("$[0].id").value(school))
+        .andExpect(jsonPath("$[1].id").value(prefix))
+        .andExpect(jsonPath("$[2].id").value(partialAlias));
+  }
+
+  @Test
   void migrationSeedsAliasesBeforeSchoolsExistAndMatchesLaterCampuses() throws Exception {
     assertThat(db.queryForObject("select count(*) from pg_extension where extname='pg_trgm'", Long.class)).isEqualTo(1);
     for (String name : List.of("posts_title_trgm_idx", "posts_body_trgm_idx", "universities_name_trgm_idx",
