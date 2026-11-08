@@ -13,6 +13,7 @@ spring:
     open-in-view: false
 pyeonit:
   push:
+    max-individual-notices: ${PYEONIT_PUSH_MAX_INDIVIDUAL_NOTICES:3}
     allowed-endpoint-host-suffixes: ${PYEONIT_PUSH_ALLOWED_ENDPOINT_HOST_SUFFIXES:fcm.googleapis.com,updates.push.services.mozilla.com,push.services.mozilla.com,notify.windows.com,push.apple.com}
     max-subscriptions-per-user: ${PYEONIT_PUSH_MAX_SUBSCRIPTIONS_PER_USER:10}
     vapid-public-key: ${PYEONIT_PUSH_VAPID_PUBLIC_KEY:}

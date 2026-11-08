@@ -37,6 +37,7 @@
 | `PYEONIT_PUSH_SCHEDULING_ENABLED` | 선택 | 기본 `true`; `false`이면 새 공고·D-1 알림 예약 작업 비활성화 |
 | `PYEONIT_PUSH_NOTICE_INTERVAL_MS` | 선택 | 기본 `60000`(밀리초); 새 공고 발송 작업 종료 후 다음 실행까지의 간격 |
 | `PYEONIT_PUSH_REMINDER_CRON` | 선택 | 기본 `0 0 9 * * *`; `Asia/Seoul` 기준 매일 09:00에 다음 날 일정의 D-1 알림 발송 |
+| `PYEONIT_PUSH_MAX_INDIVIDUAL_NOTICES` | 선택 | 기본 `3`; 회원별 한 주기 새 공고가 상한을 넘으면 목록 링크 알림 1건으로 묶음, 1 이상 |
 | `PYEONIT_PUSH_MAX_SUBSCRIPTIONS_PER_USER` | 선택 | 기본 `10`; 사용자당 구독 수 상한, 1 이상 |
 | `PYEONIT_PUSH_ALLOWED_ENDPOINT_HOST_SUFFIXES` | 선택 | 기본 `fcm.googleapis.com,updates.push.services.mozilla.com,push.services.mozilla.com,notify.windows.com,push.apple.com`; 쉼표 구분 허용 호스트 접미사 목록 |
 | `PYEONIT_SEARCH_RATE_LIMIT_WINDOW` | 선택 | 기본 `60s`; 검색 레이트리밋 창 크기, 양의 시간 값 |

@@ -1,5 +1,8 @@
 package com.pyeonit.push;
 
+import java.sql.Timestamp;
+import java.time.Clock;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,9 +16,11 @@ import com.pyeonit.push.PushController.SubscriptionRequest;
 class PushService {
     private final JdbcTemplate db;
     private final int maxSubscriptionsPerUser;
-    PushService(JdbcTemplate db, @Value("${pyeonit.push.max-subscriptions-per-user:10}") int maxSubscriptionsPerUser) {
+    private final Clock clock;
+    PushService(JdbcTemplate db, Clock clock, @Value("${pyeonit.push.max-subscriptions-per-user:10}") int maxSubscriptionsPerUser) {
         if (maxSubscriptionsPerUser < 1) throw new IllegalArgumentException("Push subscription limit must be positive");
         this.db = db;
+        this.clock = clock;
         this.maxSubscriptionsPerUser = maxSubscriptionsPerUser;
     }
 
@@ -23,10 +28,10 @@ class PushService {
     public void subscribe(long userId, SubscriptionRequest request) {
         requireMember(userId);
         db.update("""
-            INSERT INTO push_subscriptions(user_id, endpoint, p256dh, auth, user_agent) VALUES (?, ?, ?, ?, ?)
+            INSERT INTO push_subscriptions(user_id, endpoint, p256dh, auth, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, p256dh=excluded.p256dh,
-                auth=excluded.auth, user_agent=excluded.user_agent, last_success_at=NULL
-            """, userId, request.endpoint(), request.keys().p256dh(), request.keys().auth(), request.userAgent());
+                auth=excluded.auth, user_agent=excluded.user_agent, created_at=excluded.created_at, last_success_at=NULL
+            """, userId, request.endpoint(), request.keys().p256dh(), request.keys().auth(), request.userAgent(), Timestamp.from(clock.instant()));
         // The user lock serializes registrations. Keep the just-upserted endpoint even during a transfer.
         db.update("""
             DELETE FROM push_subscriptions WHERE user_id=? AND id IN (

@@ -28,9 +28,15 @@ public class UniversityController {
             and (?::text is null or u.name ilike ? escape E'\\\\'
               or exists(select 1 from university_aliases a where a.university_name=u.name
                 and a.alias ilike ? escape E'\\\\'))
-            order by name,campus,id
+            order by case
+              when lower(u.name)=lower(?::text) or exists(
+                select 1 from university_aliases a where a.university_name=u.name
+                  and lower(a.alias)=lower(?::text)) then 0
+              when u.name ilike ? escape E'\\\\' then 1
+              else 2 end, name,campus,id
             """,
-            region, region, pattern, pattern, pattern)
+            region, region, pattern, pattern, pattern, q, q,
+            pattern == null ? null : pattern.substring(1))
         .stream()
         .map(r -> data.university(((Number) r.get("id")).longValue(), user))
         .toList();
