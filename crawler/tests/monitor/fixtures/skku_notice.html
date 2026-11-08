@@ -1,0 +1,551 @@
+<!-- skku: 2026-11-08 실제 공지 게시판 렌더링 HTML. script·style·외부 리소스·세션성 값 제거 -->
+<!DOCTYPE html><html lang="ko"><head>
+	
+	<title>성균관대학교 입학처 | 편입 | 공지사항 </title>
+    
+
+		
+	
+    
+	
+	
+	 
+	 
+	 
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	<!-- Google tag (gtag.js) -->
+	
+	
+	
+	
+</head>
+<body>
+	<!-- HEADER -->
+	<div id="header" class="">
+		<div class="headerWrap headerWrapNew">	
+			<h1><a href="https://admission.skku.edu/admission/html/main/main.html">로고</a></h1>
+			<ul class="control">
+				<li class="searchOpen"><a href="javascript:void(0)">검색</a></li>
+				<li class="menuOpen"><a href="javascript:void(0)">메뉴열기</a></li>
+			</ul>
+		</div>
+		
+		<!-- 통합검색 오픈 -->
+		<div class="fullSearchWrap">
+			<div class="searchTop">
+				<div class="searchLogo">
+					<a href="https://admission.skku.edu/admission/html/main/main.html">
+						<img alt="성균관대학교 입학처 메인">
+					</a>
+				</div>
+				<div class="searchClose">
+					<a href="#">닫기</a>
+				</div>
+			</div>
+			<div class="searchCont">
+				<h2 class="searchTitle">
+					성균관대학교 입학처 <br class="mobileView">통합검색
+				</h2>
+				<form method="post" name="topSearch2" action="../use/totalSearch.html">
+				<div class="searchInput">
+					<input type="text" placeholder="검색어를 입력하세요." name="s_data" id="topSearch2">
+					<a href="javascript:void(0);" onclick="topSearch2.submit();" class="searchBtn">SEARCH</a>
+				</div>
+				</form>
+				<div class="searchHash">
+					<div class="searchHashTitle">
+						추천 검색어
+					</div>
+					<ul class="searchHashArea">
+							<li>
+							<a href="#" onclick="topSearch2.s_data.value='수시 모집요강'; topSearch2.submit(); return false;">#수시 모집요강</a>
+						</li>
+							<li>
+							<a href="#" onclick="topSearch2.s_data.value='합격자 조회'; topSearch2.submit(); return false;">#합격자 조회</a>
+						</li>
+							<li>
+							<a href="#" onclick="topSearch2.s_data.value='입학전형 시행계획'; topSearch2.submit(); return false;">#입학전형 시행계획</a>
+						</li>
+							<li>
+							<a href="#" onclick="topSearch2.s_data.value='재외국민 특별전형 모집요강'; topSearch2.submit(); return false;">#재외국민 특별전형 모집요강</a>
+						</li>
+						</ul>
+				</div>
+			</div>
+		</div>
+
+		<!-- gnb full 오픈 -->
+		<div class="gnbFullWrap">
+			<div class="searchTop">
+				<div class="searchLogo">
+					<a href="https://admission.skku.edu/admission/html/main/main.html">
+						<img alt="성균관대학교 입학처 메인">
+					</a>
+				</div>
+				<div class="searchClose">
+					<a href="#">닫기</a>
+				</div>
+			</div>
+			 <div class="gnbFullContWrap">
+				<div class="gnbFullCont">
+					<div class="gnbMenu">
+						<dl class="rollingHover">
+							<dt><a href="../rolling/notice.html">수시</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../rolling/notice.html">공지사항</a></li>
+									<li><a href="../rolling/guide.html">모집요강</a></li>
+									<li><a href="../rolling/question.html">기출문제</a></li>
+									<li><a href="../rolling/competition.html">경쟁률</a></li>
+									<li><a href="../rolling/exam.html">시험장안내</a></li>
+									<li><a href="../rolling/pass.html">합격자발표</a></li>
+									<li><a href="../rolling/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="regularHover">
+							<dt><a href="../regular/notice.html">정시</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../regular/notice.html">공지사항</a></li>
+									<li><a href="../regular/guide.html">모집요강</a></li>
+									<li><a href="../regular/question.html">기출문제</a></li>
+									<li><a href="../regular/competition.html">경쟁률</a></li>
+									<li><a href="../regular/exam.html">시험장안내</a></li>
+									<li><a href="../regular/pass.html">합격자발표</a></li>
+									<li><a href="../regular/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="abroardHover">
+							<dt><a href="../abroad/notice.html">재외국민</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../abroad/notice.html">공지사항</a></li>
+									<li><a href="../abroad/guide.html">모집요강</a></li>
+									<li><a href="../abroad/question.html">기출문제</a></li>
+									<li><a href="../abroad/competition.html">경쟁률</a></li>
+									<li><a href="../abroad/exam.html">시험장안내</a></li>
+									<li><a href="../abroad/pass.html">합격자발표</a></li>
+									<li><a href="../abroad/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="transferHover">
+							<dt><a href="../transfer/notice.html">편입</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../transfer/notice.html">공지사항</a></li>
+									<li><a href="../transfer/guide.html">모집요강</a></li>
+									<li><a href="../transfer/competition.html">경쟁률</a></li>
+									<li><a href="../transfer/exam.html">시험장안내</a></li>
+									<li><a href="../transfer/pass.html">합격자발표</a></li>
+									<li><a href="../transfer/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="highHover">
+							<dt><a href="../high/notice.html">고교대학연계</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../high/notice.html">공지사항</a></li>
+									<li><a href="../high/visit.html">고교방문설명회</a></li>
+									<li><a href="../high/pass.html">고교별합격자조회</a></li>
+									<li><a href="https://www.instagram.com/alimi_skku_official_ambassador/" target="_blank" title="새 창 알림">공식홍보대사</a></li>
+									<li><a href="../high/tour.html">캠퍼스투어신청</a></li>
+									<li><a href="../program/mentor/mentor.html" target="_blank" title="새 창 알림">전형 안내 멘토링</a></li>
+									<li><a href="../high/vr.html">VR캠퍼스투어</a></li>
+									<!--
+									<li><a href="../program/alimi_write.html" target="_blank" title="새 창 알림">알리미 지원</a></li>
+									-->
+								</ul>
+							</dd>
+						</dl>
+						<dl class="entranceHover">
+							<dt><a href="../ipsi/notice.html">입시도움방</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../ipsi/notice.html">통합공지사항</a></li>
+									<li><a href="../ipsi/qna.html">Q&amp;A</a></li>
+									<li><a href="../ipsi/book.html">입학안내책자</a></li>
+									<li><a href="../ipsi/video.html">입학안내영상</a></li>
+									<li><a href="../ipsi/result.html">입학전형결과</a></li>
+									<li><a href="../ipsi/presentation.html">지역별 박람회</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="skkuHover">
+							<dt><a href="https://www.skku.edu/skku/about/s620/sub01.do" target="_blank" title="새 창 알림">SKKU</a></dt>
+							<dd>
+								<ul>
+									<li><a href="https://www.skku.edu/skku/about/s620/sub01.do" target="_blank" title="새 창 알림">학교소개</a></li>
+									<li><a href="https://www.skku.edu/skku/about/campusInfo/location.do" target="_blank" title="새 창 알림">위치안내</a></li>
+									<li><a href="https://www.skku.edu/skku/edu/education.do" target="_blank" title="새 창 알림">전공안내</a></li>
+									<li><a href="https://www.skku.edu/skku/campus/support/scholarship.do" target="_blank" title="새 창 알림">장학안내</a></li>
+									<li><a href="https://admission-global.skku.edu/eng/" target="_blank" title="새 창 알림">Int’l Students</a></li>
+									<li><a href="https://gradschool.skku.edu/grad/index.htm" target="_blank" title="새 창 알림">대학원</a></li>
+									<li><a href="https://webzine.skku.edu/skkuzine/index.do" target="_blank" title="새 창 알림">성균웹진</a></li>
+									<li><a href="https://admission.skku.edu/admission/html/program/alimi_write.html" target="_blank" title="새 창 알림">알리미 지원</a></li>
+								</ul>
+							</dd>
+						</dl>
+					</div>
+				</div>
+				<div class="gnbFullBottom">
+					<div class="gnbCopy">
+						ⓒ 2025 SKKU. ALL RIGHTS RESERVED.
+					</div>
+					<ul class="gnbSnsGroup">
+						<li class="fb">
+							<a href="https://www.facebook.com/sungkyunkwanuniversity1398" target="_blank" title="새 창 알림">facebook</a>
+						</li>
+						<li class="insta">
+							<a href="https://www.instagram.com/sungkyunkwan.univ/" target="_blank" title="새 창 알림">instagram</a>
+						</li>
+						<li class="yt">
+							<a href="https://www.youtube.com/channel/UCMSzjNHLZNNUUA-Z8OrXY9Q" target="_blank" title="새 창 알림">youtube</a>
+						</li>
+					</ul>
+				</div>
+			 </div>
+		</div>
+
+		<!-- 모바일 gnb 오픈 -->
+		<div class="gnbFullWrapMobile">
+			<div class="gnbMobileGroup">
+				<div class="searchTop">
+					<div class="searchLogo">
+						<a href="https://admission.skku.edu/admission/html/main/main.html">
+							<img alt="성균관대학교 입학처 메인">
+						</a>
+					</div>
+					<div class="searchClose">
+						<a href="#">닫기</a>
+					</div>
+				</div>
+				<div class="gnbFullCont">
+					<div class="gnbMenu">
+						<dl class="rollingHover">
+							<dt><a href="../rolling/notice.html">수시</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../rolling/notice.html">공지사항</a></li>
+									<li><a href="../rolling/guide.html">모집요강</a></li>
+									<li><a href="../rolling/question.html">기출문제</a></li>
+									<li><a href="../rolling/competition.html">경쟁률</a></li>
+									<li><a href="../rolling/exam.html">시험장안내</a></li>
+									<li><a href="../rolling/pass.html">합격자발표</a></li>
+									<li><a href="../rolling/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="regularHover">
+							<dt><a href="../regular/notice.html">정시</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../regular/notice.html">공지사항</a></li>
+									<li><a href="../regular/guide.html">모집요강</a></li>
+									<li><a href="../regular/question.html">기출문제</a></li>
+									<li><a href="../regular/competition.html">경쟁률</a></li>
+									<li><a href="../regular/exam.html">시험장안내</a></li>
+									<li><a href="../regular/pass.html">합격자발표</a></li>
+									<li><a href="../regular/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="abroardHover">
+							<dt><a href="../abroad/notice.html">재외국민</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../abroad/notice.html">공지사항</a></li>
+									<li><a href="../abroad/guide.html">모집요강</a></li>
+									<li><a href="../abroad/question.html">기출문제</a></li>
+									<li><a href="../abroad/competition.html">경쟁률</a></li>
+									<li><a href="../abroad/exam.html">시험장안내</a></li>
+									<li><a href="../abroad/pass.html">합격자발표</a></li>
+									<li><a href="../abroad/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="transferHover">
+							<dt><a href="../transfer/notice.html">편입</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../transfer/notice.html">공지사항</a></li>
+									<li><a href="../transfer/guide.html">모집요강</a></li>
+									<li><a href="../transfer/competition.html">경쟁률</a></li>
+									<li><a href="../transfer/exam.html">시험장안내</a></li>
+									<li><a href="../transfer/pass.html">합격자발표</a></li>
+									<li><a href="../transfer/submit.html">서류제출확인</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="highHover">
+							<dt><a href="../high/notice.html">고교대학연계</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../high/notice.html">공지사항</a></li>
+									<li><a href="../high/visit.html">고교방문설명회</a></li>
+									<li><a href="../high/pass.html">고교별합격자조회</a></li>
+									<li><a href="https://www.instagram.com/alimi_skku_official_ambassador/" target="_blank" title="새 창 알림">공식홍보대사</a></li>
+									<li><a href="../high/tour.html">캠퍼스투어신청</a></li>
+									<li><a href="../program/mentor/mentor.html" target="_blank" title="새 창 알림">전형 안내 멘토링</a></li>
+									<li><a href="../high/vr.html">VR캠퍼스투어</a></li>
+									<!--
+									<li><a href="../program/alimi_write.html" target="_blank" title="새 창 알림">알리미 지원</a></li>
+									-->
+								</ul>
+							</dd>
+						</dl>
+						<dl class="entranceHover">
+							<dt><a href="../ipsi/notice.html">입시도움방</a></dt>
+							<dd>
+								<ul>
+									<li><a href="../ipsi/notice.html">통합공지사항</a></li>
+									<li><a href="../ipsi/qna.html">Q&amp;A</a></li>
+									<li><a href="../ipsi/book.html">입학안내책자</a></li>
+									<li><a href="../ipsi/video.html">입학안내영상</a></li>
+									<li><a href="../ipsi/result.html">입학전형결과</a></li>
+									<li><a href="../ipsi/presentation.html">지역별 박람회</a></li>
+								</ul>
+							</dd>
+						</dl>
+						<dl class="skkuHover">
+							<dt><a href="https://www.skku.edu/skku/about/s620/sub01.do" target="_blank" title="새 창 알림">SKKU</a></dt>
+							<dd>
+								<ul>
+									<li><a href="https://www.skku.edu/skku/about/s620/sub01.do" target="_blank" title="새 창 알림">학교소개</a></li>
+									<li><a href="https://www.skku.edu/skku/about/campusInfo/location.do" target="_blank" title="새 창 알림">위치안내</a></li>
+									<li><a href="https://www.skku.edu/skku/edu/education.do" target="_blank" title="새 창 알림">전공안내</a></li>
+									<li><a href="https://www.skku.edu/skku/campus/support/scholarship.do" target="_blank" title="새 창 알림">장학안내</a></li>
+									<li><a href="https://admission-global.skku.edu/eng/" target="_blank" title="새 창 알림">Int’l Students</a></li>
+									<li><a href="https://gradschool.skku.edu/grad/index.htm" target="_blank" title="새 창 알림">대학원</a></li>
+									<li><a href="https://webzine.skku.edu/skkuzine/index.do" target="_blank" title="새 창 알림">성균웹진</a></li>
+									<li><a href="https://admission.skku.edu/admission/html/program/alimi_write.html" target="_blank" title="새 창 알림">알리미 지원</a></li>
+								</ul>
+							</dd>
+						</dl>
+					</div>
+				</div>
+			</div>
+
+			<div class="gnbFullBottom">
+				<div class="gnbCopy">
+					ⓒ 2025 SKKU. ALL RIGHTS RESERVED.
+				</div>
+				<ul class="gnbSnsGroup">
+					<li class="fb">
+						<a href="https://www.facebook.com/sungkyunkwanuniversity1398" target="_blank" title="새 창 알림">facebook</a>
+					</li>
+					<li class="insta">
+						<a href="https://www.instagram.com/sungkyunkwan.univ/" target="_blank" title="새 창 알림">instagram</a>
+					</li>
+					<li class="yt">
+						<a href="https://www.youtube.com/channel/UCMSzjNHLZNNUUA-Z8OrXY9Q" target="_blank" title="새 창 알림">youtube</a>
+					</li>
+				</ul>
+			</div>
+
+		</div>
+		<div class="dim"></div>
+	</div>		<!-- //HEADER -->
+
+	<!-- ISSUE -->
+		<div class="subTitle bg04">
+		<p>편입</p>
+	</div>
+
+<!--
+	<div class="issueWrap bg04">
+		<div class="issueTitle">
+			<h2>편입 주요소식</h2>
+		</div>
+
+		<div class="issueList">
+			<div class="slide cate1"><a href='https://admission.skku.edu/admission/html/ipsi/noticeView.html?idx=59465' target='_blank' title='새 창 알림'>
+				<span>공통</span>
+				<div class="text">
+					<p>성균관대학교<br>입학전형 시행계획<br></p>
+					<i></i>
+				</div>
+			</a></div>
+			<div class="slide cate5"><a href='https://admission.skku.edu/admission/html/transfer/noticeView.html?idx=59518'>
+				<span>편입</span>
+				<div class="text">
+					<p>편입학모집<br>기본계획</p>
+					<i></i>
+				</div>
+			</a></div>
+		</div>
+	</div>
+-->
+	<!-- //ISSUE -->
+
+    <!-- BODY -->
+    <div id="bodyArea">
+		<!-- LNB -->  
+		<div id="contHead">
+			<div id="lnb" class="cate4">
+				<ul class="subLnb col6">
+					<li class="on"><a href="notice.html"><span>공지사항</span></a></li>
+					<li><a href="guide.html"><span>모집요강</span></a></li>
+					<li><a href="competition.html"><span>경쟁률</span></a></li>
+					<li><a href="exam.html"><span>시험장안내</span></a></li>
+					<li><a href="pass.html"><span>합격자발표</span></a></li>
+					<li><a href="submit.html"><span>서류제출확인</span></a></li>
+				</ul>
+				<div class="subLnb_m">
+					<div class="mTitle"><span>편입</span><a href="javascript:void(0)" class="openClose">닫기</a></div>	
+					<ul>
+						<li class="on"><a href="notice.html"><span>공지사항</span></a></li>
+						<li><a href="guide.html"><span>모집요강</span></a></li>
+						<li><a href="competition.html"><span>경쟁률</span></a></li>
+						<li><a href="exam.html"><span>시험장안내</span></a></li>
+						<li><a href="pass.html"><span>합격자발표</span></a></li>
+						<li><a href="submit.html"><span>서류제출확인</span></a></li>
+					</ul>
+				</div>
+				<div class="dim"></div>		
+			</div>
+		</div>		<!-- //LNB -->  
+		<!-- CONTENTS -->
+		<div class="contentWrap"> 
+			<!-- title -->
+			<div class="subTit">
+				<h3>공지사항</h3>
+				<ul class="subFont">
+					<li><a href="javascript:void(0)" onclick="fontSize('down');return false;"><img alt="글자 축소"></a></li>
+					<li><img alt="글자"></li>
+					<li><a href="javascript:void(0)" onclick="fontSize('up');return false;"><img alt="글자 확대"></a></li>
+					<li><a href="javascript:void(0)" onclick="window.print();"><img alt="글자 인쇄"></a></li>
+				</ul>
+			</div>
+			<!-- //title -->
+			<div class="boardSearch">
+				<div class="totalNum">총 <span>2건</span>의 게시물이 있습니다.</div>
+				<div class="searchArea">
+					<form name="frmData" method="post" class="search">
+					<input type="hidden" name="idx">
+					<input type="hidden" name="s_page">
+						<fieldset>
+							<legend>게시물 검색</legend>
+							<div class="searchClassfi">
+								<label id="s_code">제목</label>
+								<span class="sign"></span>
+								<select name="s_code" title="검색조건">
+									<option value="BT" selected="">제목</option>
+									<option value="BC">내용</option>
+								</select>
+							</div>
+							<input type="text" title="검색어" class="input" name="s_data" value="" placeholder="검색어를 입력하세요.">
+							<a href="#" onclick="listData(1)" class="btn-search">검색</a>
+						</fieldset>
+					</form>
+				</div>
+			</div>
+			<!-- Board List -->
+			<table class="bList" summary="">
+				<caption>글목록</caption>
+				<colgroup>
+					<col class="col01">
+				</colgroup>
+				<tbody>
+					<tr>
+						<td>
+							<a href="#" onclick="viewData('59518');">
+								<div class="subject">
+									<span class="noti">공지</span>
+									<p>
+										<span style="color:; font-weight:Normal;">2027학년도 편입학모집 기본계획 안내</span>																			</p>
+								</div>
+								<div class="reg"><span class="bar">작성일 : 2026-09-02</span><span>조회수 : 15848</span></div>
+								<span class="file"><img alt="첨부파일 아이콘"></span>							</a>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<a href="#" onclick="viewData('59369');">
+								<div class="subject">
+									<span class="noti">공지</span>
+									<p>
+										<span style="color:; font-weight:Normal;">2026학년도 편입학 모집요강</span>																			</p>
+								</div>
+								<div class="reg"><span class="bar">작성일 : 2025-12-09</span><span>조회수 : 75458</span></div>
+								<span class="file"><img alt="첨부파일 아이콘"></span>							</a>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<!-- //Board List -->
+			<!-- Paging -->
+			<div class="pageArea">
+				<div class="paging"></div>			</div>
+			<!-- //Paging -->
+		</div>
+		<!-- //CONTENTS  -->
+	</div>	
+    <!-- //BODY -->  
+	
+	<!-- FOOTER -->
+		<div class="footer mainFooter">
+			<div class="footWrap">
+				<div class="footerTop">
+					<div class="footerLogo">
+						<img alt="성균관대학교 입학처 메인">
+					</div>
+					<div class="topWrap">	
+						<ul class="left">
+							<li><a href="https://www.skku.edu/skku/index.do" target="_blank" title="새 창 알림">SKKU 성균관대학교</a></li>
+							<li><a href="https://gradschool.skku.edu/grad/index.htm" target="_blank" title="새 창 알림">SKKU 대학원 입학</a></li>
+							<li><a href="../use/sitemap.html">사이트맵</a></li>
+							<li><a href="https://www.skku.edu/skku/etc/private.do" target="_blank" title="새 창 알림">개인정보보호처리방침</a></li>
+						</ul>
+						<ul class="right">
+							<li><a href="https://www.skku.edu/skku/about/campusInfo/location.do" target="_blank" title="새 창 알림">오시는 길</a></li>
+							<li><a href="https://www.skku.edu/skku/about/campusInfo/campusMap.do" target="_blank" title="새 창 알림">캠퍼스맵</a></li>
+							<li><a href="../use/objection.html">이의신청</a></li>
+							<li><a href="../use/complain.html">회피신고</a></li>
+						</ul>	
+					</div>
+					<div class="phone">
+						<span>대표전화</span>
+						<p>02-760-1000</p>
+						<!--
+						<p>FAX : 02-760-1350</p>
+						-->
+					</div>
+				</div>
+				
+				<div class="footerBottom">
+					<address>
+						<p>
+							(03063) 서울시 종로구 성균관로 25-2 성균관대학교 600주년기념관 1층 입학처
+						</p>
+						<p>
+							ⓒ 2025 SKKU. ALL RIGHTS RESERVED.
+						</p>
+					</address>
+					<div class="sns">
+						<a href="https://www.facebook.com/sungkyunkwanuniversity1398" target="_blank" title="새 창 알림" class="snsF">facebook</a>
+						<a href="https://www.instagram.com/skku.official/" target="_blank" title="새 창 알림" class="snsI">instagram</a>
+						<a href="https://www.youtube.com/channel/UCMSzjNHLZNNUUA-Z8OrXY9Q" target="_blank" title="새 창 알림" class="snsY">youtube</a>
+					</div>
+				</div>
+					
+			</div>
+        </div>	<!-- //FOOTER -->  
+
+
+</body></html>

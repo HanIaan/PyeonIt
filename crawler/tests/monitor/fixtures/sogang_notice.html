@@ -1,0 +1,331 @@
+<!-- sogang: 2026-11-08 실제 공지 게시판 렌더링 HTML. script·style·외부 리소스·세션성 값 제거 -->
+<!DOCTYPE html><html lang="ko"><head>
+	
+	<title>서강대학교 입학처 | 편입학 | 공지사항</title>
+    
+
+	
+	
+	
+	
+	
+	
+	 
+	 
+	 
+	
+
+	
+	
+	
+
+	
+	
+	
+
+	
+
+	<!-- google ga -->
+	<!-- Google tag (gtag.js) -->
+
+
+	<!-- //google ga -->
+
+</head>
+<body>
+		<!-- header -->
+	<header>
+		<h1>
+			<a href="../main/index.asp">서강대 입학처 로고</a>
+		</h1>
+		<div class="controls">
+			<a href="javascript:void(0);" aria-haspopup="true" id="searchPop" class="searchOpen">검색창</a>
+			<a href="javascript:void(0);" aria-haspopup="true" id="menuPop" class="menuOpen">
+				<i></i><i></i><i></i>
+				<span>전체메뉴</span>
+			</a>
+			<a href="javascript:void(0);" aria-haspopup="true" id="newsPop" class="newsOpen">News</a>
+		</div>
+	</header>
+	<!-- //header -->
+	<div class="subTitle bg04">
+		<p class="SOGANG">편입학</p>
+		<span>서강대학교 편입학 모집 안내입니다.</span>
+	</div>
+	<div class="subLnb">
+		<ul class="content">
+			<li class="home"><a href="subMain.asp">서브메인</a></li>
+			<li class="on"><a href="notice.asp"><span>공지사항</span></a></li>
+			<li><a href="guide.asp"><span>모집요강/자료실</span></a></li>
+			<li><a href="competition.asp"><span>경쟁률</span></a></li>
+			<li><a href="faq.asp"><span>FAQ</span></a></li>
+		</ul>
+	</div>
+
+
+	<div id="bodyArea">
+		<div class="content">
+			<p class="pageTitle">공지사항</p>
+			<div class="boardSearch">
+				<div>총 <span class="num">1건</span>의 게시물이 있습니다.</div>
+				<form method="post" name="frmData">
+				<input type="hidden" name="s_page">
+				<input type="hidden" name="idx">
+					<select name="s_code" id="s_code" title="검색종류">
+						<option value="BT" selected="">제목</option>
+						<option value="BC">내용</option>
+					</select>
+					<div class="inputWrap">
+						<input type="text" name="s_data" value="" title="검색어" placeholder="검색어를 입력하세요">
+						<button class="btn_search">검색</button>
+					</div>
+				</form>
+			</div>
+			<ul class="boardList">
+
+				<li>
+					<a href="#" onclick="viewData('28063'); return false;">
+						<div class="subJect">
+							
+							<p><span style="color:; font-weight:Normal;">2026학년도 일반 및 학사 편입학 모집요강</span></p>
+						</div>
+						<p class="date">작성일 : 2025.12.09</p>
+						<i class="ico ico-file">아이콘</i>
+					</a>
+				</li>
+
+			</ul>
+
+			<div class="pageArea">
+				<div class="inner">
+			
+					
+					<a href="#" onclick="return false;" class="page prev">이전 페이지</a>
+					
+					<a href="#" onclick="listData('1'); return false;" class="num on">1</a>
+
+					<a href="#" onclick="return false;" class="page next"></a>
+					
+
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+		<!-- footer -->
+	<section class="footer">
+		<div class="content">
+			<div class="left">
+				<ul>
+					<li><a href="http://www.sogang.ac.kr/notice/private_rule/privacy05.html" target="_blank" title="새창">개인정보처리방침</a></li>
+					<li><a href="../use/sitemap.asp">사이트맵</a></li>
+					<li><a href="https://sogang.ac.kr/ko/school-introduction/address" target="_blank" title="새창">찾아오시는 길</a></li>
+					<li><a href="https://sogang.ac.kr/" target="_blank" title="새창">서강대학교</a></li>
+					<li>
+						<dl class="goUniv">
+							<dt>대학 바로가기<i class="ico ico-plus">플러스 아이콘</i></dt>
+							<dd>
+								<a href="https://liberalarts.sogang.ac.kr" target="_blank" title="새창">인문대학</a>
+								<a href="https://sdoss.sogang.ac.kr" target="_blank" title="새창">사회과학대학</a>
+								<a href="http://econ.sogang.ac.kr/econ/index.do" target="_blank" title="새창">경제대학</a>
+								<a href="https://sbs.sogang.ac.kr/sbs/index.do" target="_blank" title="새창">경영대학</a>
+								<a href="https://lic.sogang.ac.kr/lic/index.html" target="_blank" title="새창">로욜라국제대학</a>
+								<a href="https://smas.sogang.ac.kr/smas/index_new.html" target="_blank" title="새창">지식융합미디어대학</a>
+								<a href="https://science.sogang.ac.kr/science/index_new.html" target="_blank" title="새창">자연과학대학</a>
+								<a href="https://eng.sogang.ac.kr/eng/index_new.html" target="_blank" title="새창">공과대학</a>
+								<a href="https://computing.sogang.ac.kr/computing/index.html" target="_blank" title="새창">소프트웨어융합대학</a>
+								<a href="https://gsot.sogang.ac.kr" target="_blank" title="새창">신학대학원</a>
+								<a href="https://gsis.sogang.ac.kr" target="_blank" title="새창">국제대학원</a>
+								<a href="https://gsm.sogang.ac.kr/gsm/index_new.html" target="_blank" title="새창">메타버스전문대학원</a>
+								<a href="https://sbs.sogang.ac.kr/sbs/index.do" target="_blank" title="새창">경영전문대학원</a>
+								<a href="https://lawschool.sogang.ac.kr" target="_blank" title="새창">법학전문대학원</a>
+								<a href="https://sgmot.sogang.ac.kr" target="_blank" title="새창">기술경영전문대학원</a>
+								<a href="https://gspp.sogang.ac.kr" target="_blank" title="새창">공공정책대학원</a>
+								<a href="https://gsedu.sogang.ac.kr" target="_blank" title="새창">교육대학원</a>
+								<a href="https://econ.sogang.ac.kr/econ/index.do" target="_blank" title="새창">경제대학원</a>
+								<a href="https://gscom.sogang.ac.kr" target="_blank" title="새창">미디어커뮤니케이션대학원</a>
+								<a href="https://gsinfo.sogang.ac.kr" target="_blank" title="새창">정보통신대학원</a>
+							</dd>
+						</dl>
+					</li>
+				</ul>
+				<address>
+					<p>Admissions Office, 9th Fl, Paulus Hall(PA), 35 Baekbeom-ro, Mapo-gu, Seoul 04107, Korea.</p>
+					<p>02-705-8621 / lovesogang@sogang.ac.kr</p>
+				</address>
+			</div>
+			<div class="right">
+				<i class="ico ico-logo">로고</i>
+				<p class="copy">© 2023 by Sogang Univ. All rights reserved.</p>
+			</div>
+		</div>
+	</section>
+	<!-- //footer -->
+
+	<div class="newsPop pop">
+		<div class="popCont">
+			<a href="javascript:void(0);" class="popClose" data-popup="newsPop"><span>Close</span></a>
+			<div class="top">
+				<p class="title SOGANG">Sogang Hot News</p>
+				<span>02</span>
+			</div>
+			<ul class="content guideList">
+
+				<li><a href="#" onclick="viewDataHot('29514', '../regular/noticeView.asp'); return false;" tabindex="0">
+					<div class="detail"><span class="cate cate2">정시</span><span>공지사항</span></div>
+					<p class="subject">2027학년도 정시모집 모집요강</p>
+					<p class="date">2026.09.01</p>
+					<i class="ico-arr">화살표</i>
+				</a></li>
+
+				<li><a href="#" onclick="viewDataHot('29117', '../rolling/dataView.asp'); return false;" tabindex="0">
+					<div class="detail"><span class="cate cate1">수시</span><span>자료실</span></div>
+					<p class="subject">2027학년도 모의논술 자료집</p>
+					<p class="date">2026.06.17</p>
+					<i class="ico-arr">화살표</i>
+				</a></li>
+
+				<!-- <div class="noCont box"></div> -->
+
+				<!-- <div class="noCont box"></div> -->
+
+			</ul>
+		</div>	
+	</div>
+
+	<div class="searchPop pop">
+		<div class="dim"></div>
+		<div class="popCont">
+			<a href="javascript:void(0);" class="popClose" data-popup="searchPop"><span>Close</span></a>
+			<p class="title SOGANG">Search</p>
+			<form method="post" name="frmTopSearch" action="javascript:topSearch();">
+				<div class="inputWrap">
+					<input id="topSearch" type="text" name="s_data" value="" placeholder="검색어를 입력하세요.">
+					<label for="topSearch"><a href="#" onclick="topSearch(); return false;">검색</a></label>
+				</div>
+			</form>
+			<div class="des"> 입학처 전체 게시판을 한번에 검색할 수 있습니다.</div>
+		</div>
+	</div>
+	<form method="post" name="frmDataHot">
+	<input type="hidden" name="idx">
+	</form>
+	
+
+	<div class="menuPop pop">
+		<div class="popCont">
+			<div class="top">
+				<div class="logo">로고</div>
+				<a href="javascript:void(0);" class="popClose wh" data-popup="menuPop"><span>Close</span></a>
+			</div>
+			<div class="menu">
+				<dl>
+					<dt><a href="../rolling/subMain.asp">수시</a></dt>
+					<dd>
+						<ul>
+							<li><a href="../rolling/notice.asp">공지사항</a></li>
+							<li><a href="../rolling/guide.asp">모집요강/자료실</a></li>
+							<li><a href="../rolling/competition.asp">경쟁률</a></li>
+							<li><a href="../rolling/faq.asp">FAQ</a></li>
+						</ul>
+					</dd>
+				</dl>
+				<dl>
+					<dt><a href="../regular/subMain.asp">정시</a></dt>
+					<dd>
+						<ul>
+							<li><a href="../regular/notice.asp">공지사항</a></li>
+							<li><a href="../regular/guide.asp">모집요강/자료실</a></li>
+							<li><a href="../regular/competition.asp">경쟁률</a></li>
+							<li><a href="../regular/faq.asp">FAQ</a></li>
+						</ul>
+					</dd>
+				</dl>
+				<dl>
+					<dt><a href="../abroad/subMain.asp">재외국민</a></dt>
+					<dd>
+						<ul>
+							<li><a href="../abroad/notice.asp">공지사항</a></li>
+							<li><a href="../abroad/guide.asp">모집요강/자료실</a></li>
+							<li><a href="../abroad/competition.asp">경쟁률</a></li>
+							<li><a href="../abroad/faq.asp">FAQ</a></li>
+						</ul>
+					</dd>
+				</dl>
+				<dl>
+					<dt><a href="../transfer/subMain.asp">편입학</a></dt>
+					<dd>
+						<ul>
+							<li><a href="../transfer/notice.asp">공지사항</a></li>
+							<li><a href="../transfer/guide.asp">모집요강/자료실</a></li>
+							<li><a href="../transfer/competition.asp">경쟁률</a></li>
+							<li><a href="../transfer/faq.asp">FAQ</a></li>
+						</ul>
+					</dd>
+				</dl>
+				<dl>
+					<dt><a href="../counsel/notice.asp">입학자료실</a></dt>
+					<dd>
+						<ul>
+							<li><a href="../counsel/notice.asp">공지사항</a></li>
+							<li><a href="../counsel/plan.asp">전형시행계획</a></li>
+							<li><a href="../counsel/result.asp">입시결과</a></li>
+							<li><a href="../counsel/book.asp">입시책자 열람</a></li>
+							<li><a href="../counsel/video.asp">입학안내영상</a></li>
+							<li><a href="../counsel/qna.asp">Q&amp;A</a></li>
+						</ul>
+					</dd>
+				</dl>
+				<dl>
+					<dt><a href="../high/notice.asp">고교대학연계</a></dt>
+					<dd>
+						<ul>
+							<li><a href="../high/notice.asp">공지사항</a></li>
+							<li><a href="../high/program.asp">전형안내 프로그램</a></li>
+							<li><a href="../high/presentation.asp">지역별 박람회</a></li>
+							<li><a href="../high/highProgram.asp">고교-서강 프로그램</a></li>
+							<li><a href="../high/passer.asp">고교별 합격자조회</a></li>
+						</ul>
+					</dd>
+				</dl>
+				<dl>
+					<dt><a href="https://sogang.ac.kr/ko/home" target="_blank" title="새창">학교안내</a></dt>
+					<dd>
+						<ul>
+							<li><a href="https://oisaen.sogang.ac.kr/oisaen/index.do" target="_blank" title="새창">Int’l Students</a></li>
+							<li><a href="https://sogang.ac.kr/ko/academic-support/major" target="_blank" title="새창">전공안내</a></li>
+							<li><a href="../campus/eventInfo.asp">학생활동</a></li>
+							<li><a href="https://sogang.ac.kr/ko/menu-scholarship" target="_blank" title="새창">장학안내</a></li>
+							<li><a href="https://www.sogang.ac.kr/ko/main-campus-tour/registration-information/apply-for-a-tour" target="_blank" title="새창">캠퍼스 투어 신청</a></li>
+							<li><a href="https://sogang.ac.kr/ko/school-introduction/address" target="_blank" title="새창">찾아오시는 길</a></li>
+						</ul>
+					</dd>
+				</dl>
+			</div>
+			<div class="bottom">
+				<div class="left">
+					<a href="http://www.sogang.ac.kr/notice/private_rule/privacy05.html" target="_blank" title="새창">개인정보처리방침</a>
+					<a href="../use/sitemap.asp">사이트맵</a>
+					<a href="https://sogang.ac.kr/ko/school-introduction/address" target="_blank" title="새창">찾아오시는 길</a>
+					<a href="https://sogang.ac.kr/" target="_blank" title="새창">서강대학교</a>
+				</div>
+				<div class="snsWrap">
+					<a href="https://www.facebook.com/soganguniversity/" target="_blank" title="새창"><img alt=""></a>
+					<a href="https://www.instagram.com/sogang_university/" target="_blank" title="새창"><img alt=""></a>
+					<a href="https://m.blog.naver.com/PostList.naver?blogId=sogangpr" target="_blank" title="새창"><img alt=""></a>
+					<a href="https://www.youtube.com/channel/UCkS7AP2fk8Yg_BiQPP2ctNw" target="_blank" title="새창"><img alt=""></a>
+				</div>
+			</div>
+		</div>	
+	</div>
+
+	<div class="floatMenu">
+		<a href="javascript:void(0);" aria-haspopup="true" pop-id="newsPop" class="newsOpen">News</a>
+		<a href="javascript:void(0);" class="goTop"><img alt=""></a>
+	</div>
+
+
+	
+
+</body></html>
