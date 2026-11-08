@@ -30,7 +30,10 @@ class PushService {
         db.update("""
             INSERT INTO push_subscriptions(user_id, endpoint, p256dh, auth, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id, p256dh=excluded.p256dh,
-                auth=excluded.auth, user_agent=excluded.user_agent, created_at=excluded.created_at, last_success_at=NULL
+                auth=excluded.auth, user_agent=excluded.user_agent,
+                created_at=CASE WHEN push_subscriptions.user_id=excluded.user_id
+                    THEN push_subscriptions.created_at ELSE excluded.created_at END,
+                last_success_at=NULL
             """, userId, request.endpoint(), request.keys().p256dh(), request.keys().auth(), request.userAgent(), Timestamp.from(clock.instant()));
         // The user lock serializes registrations. Keep the just-upserted endpoint even during a transfer.
         db.update("""

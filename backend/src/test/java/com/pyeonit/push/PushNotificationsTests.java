@@ -28,7 +28,14 @@ class PushNotificationsTests {
     static class Fakes {
         @Bean @Primary FakeSender fakeSender() { return new FakeSender(); }
         // UTC date is Nov 7, while the Korean current date is Nov 8.
-        @Bean @Primary Clock pushTestClock() { return Clock.fixed(Instant.parse("2026-11-07T15:30:00Z"), ZoneOffset.UTC); }
+        @Bean @Primary TestClock pushTestClock() { return new TestClock(); }
+    }
+    static class TestClock extends Clock {
+        private volatile Instant now = Instant.parse("2026-11-07T15:30:00Z");
+        void set(Instant now) { this.now = now; }
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return Clock.fixed(now, zone); }
+        @Override public Instant instant() { return now; }
     }
     static class FakeSender implements PushSender {
         final List<Delivery> deliveries = new CopyOnWriteArrayList<>();
@@ -47,7 +54,7 @@ class PushNotificationsTests {
     @Autowired org.springframework.transaction.PlatformTransactionManager transactions;
     @Autowired PushConfiguration.Properties properties;
     @Autowired PushEndpointPolicy endpoints;
-    @Autowired Clock clock;
+    @Autowired TestClock clock;
     @Autowired FakeSender sender;
     @Autowired MockMvc mvc;
     long school;
@@ -60,6 +67,7 @@ class PushNotificationsTests {
     long withdrawn;
 
     @BeforeEach void setup() {
+        clock.set(Instant.parse("2026-11-07T15:30:00Z"));
         db.execute("TRUNCATE users, universities CASCADE");
         sender.deliveries.clear(); sender.responses.clear(); sender.exceptions.clear();
         school = school("대상대학교"); otherSchool = school("다른대학교");
@@ -139,15 +147,92 @@ class PushNotificationsTests {
         assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isEqualTo(2);
     }
 
-    @Test void upsertAndOwnershipTransferResetCutoffAndSkipOlderApprovals() {
-        var keys = new PushController.Keys("fake-public", "fake-auth");
-        service.subscribe(active, new PushController.SubscriptionRequest(endpoint(active), keys, null));
-        service.subscribe(active, new PushController.SubscriptionRequest(endpoint(suspended), keys, null));
+    @Test void sameOwnerReregistrationPreservesCreatedAtAndRefreshesKeysAndAgent() {
+        Timestamp createdAt = subscriptionCreatedAt(endpoint(active));
+        db.update("UPDATE push_subscriptions SET last_success_at=? WHERE endpoint=?", createdAt, endpoint(active));
+        clock.set(clock.instant().plusSeconds(120));
+        service.subscribe(active, request(endpoint(active), "updated"));
+        assertThat(subscriptionCreatedAt(endpoint(active))).isEqualTo(createdAt);
+        assertThat(db.queryForMap("SELECT p256dh, auth, user_agent, last_success_at FROM push_subscriptions WHERE endpoint=?",
+                endpoint(active))).containsEntry("p256dh", "updated-public").containsEntry("auth", "updated-auth")
+                .containsEntry("user_agent", "updated-agent").containsEntry("last_success_at", null);
+    }
+
+    @Test void approvalBetweenSubscriptionAndReregistrationIsDeliveredOnce() {
+        db.update("DELETE FROM push_subscriptions");
+        db.update("UPDATE admission_documents SET status='NEEDS_REVIEW', reviewed_at=NULL WHERE id=?", document);
+        service.subscribe(active, request(endpoint(active), "initial"));
+        Timestamp createdAt = subscriptionCreatedAt(endpoint(active));
+        clock.set(clock.instant().plusSeconds(60));
+        db.update("UPDATE admission_documents SET status='APPROVED', reviewed_at=? WHERE id=?",
+                Timestamp.from(clock.instant()), document);
+        clock.set(clock.instant().plusSeconds(60));
+        service.subscribe(active, request(endpoint(active), "updated"));
+        jobs.newNotices(); jobs.newNotices();
+        assertThat(subscriptionCreatedAt(endpoint(active))).isEqualTo(createdAt);
+        assertThat(sender.deliveries).extracting(Delivery::endpoint).containsExactly(endpoint(active));
+        assertThat(db.queryForList("SELECT ref_key FROM notification_log WHERE user_id=?", Long.class, active))
+                .containsExactly(document);
+    }
+
+    @Test void ownershipTransferResetsCutoffAndOnlyDeliversApprovalsAfterTransfer() {
+        db.update("DELETE FROM push_subscriptions WHERE endpoint<>?", endpoint(suspended));
+        Timestamp previousCreatedAt = subscriptionCreatedAt(endpoint(suspended));
+        clock.set(clock.instant().plusSeconds(60));
+        service.subscribe(active, request(endpoint(suspended), "transferred"));
+        assertThat(subscriptionCreatedAt(endpoint(suspended))).isEqualTo(Timestamp.from(clock.instant()))
+                .isAfter(previousCreatedAt);
+        assertThat(db.queryForObject("SELECT user_id FROM push_subscriptions WHERE endpoint=?", Long.class, endpoint(suspended)))
+                .isEqualTo(active);
         jobs.newNotices();
         assertThat(sender.deliveries).isEmpty();
         assertThat(db.queryForObject("SELECT count(*) FROM notification_log", Integer.class)).isZero();
-        assertThat(db.queryForList("SELECT created_at FROM push_subscriptions WHERE user_id=?", Timestamp.class, active))
-                .containsOnly(Timestamp.from(clock.instant()));
+        clock.set(clock.instant().plusSeconds(60));
+        long newer = document(school, "APPROVED");
+        db.update("UPDATE admission_documents SET reviewed_at=? WHERE id=?", Timestamp.from(clock.instant()), newer);
+        jobs.newNotices(); jobs.newNotices();
+        assertThat(sender.deliveries).extracting(Delivery::endpoint).containsExactly(endpoint(suspended));
+        assertThat(db.queryForList("SELECT ref_key FROM notification_log WHERE user_id=?", Long.class, active))
+                .containsExactly(newer);
+    }
+
+    @Test void newEndpointUsesCurrentClockTime() {
+        clock.set(clock.instant().plusSeconds(120));
+        String fresh = "https://push.example.invalid/fresh";
+        service.subscribe(active, request(fresh, "initial"));
+        assertThat(subscriptionCreatedAt(fresh)).isEqualTo(Timestamp.from(clock.instant()));
+    }
+
+    @Test void concurrentReregistrationsPreserveCreatedAtAndKeepKeysTogether() throws Exception {
+        Timestamp createdAt = subscriptionCreatedAt(endpoint(active));
+        clock.set(clock.instant().plusSeconds(120));
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var start = new CountDownLatch(1);
+            var futures = new ArrayList<Future<?>>();
+            for (String key : List.of("first", "second")) {
+                futures.add(executor.submit(() -> {
+                    start.await();
+                    service.subscribe(active, request(endpoint(active), key));
+                    return null;
+                }));
+            }
+            start.countDown();
+            for (var future : futures) future.get(10, TimeUnit.SECONDS);
+        }
+        assertThat(subscriptionCreatedAt(endpoint(active))).isEqualTo(createdAt);
+        var row = db.queryForMap("SELECT p256dh, auth, user_agent FROM push_subscriptions WHERE endpoint=?", endpoint(active));
+        String key = ((String) row.get("p256dh")).replace("-public", "");
+        assertThat(key).isIn("first", "second");
+        assertThat(row).containsEntry("auth", key + "-auth").containsEntry("user_agent", key + "-agent");
+    }
+
+    private PushController.SubscriptionRequest request(String endpoint, String key) {
+        return new PushController.SubscriptionRequest(endpoint,
+                new PushController.Keys(key + "-public", key + "-auth"), key + "-agent");
+    }
+
+    private Timestamp subscriptionCreatedAt(String endpoint) {
+        return db.queryForObject("SELECT created_at FROM push_subscriptions WHERE endpoint=?", Timestamp.class, endpoint);
     }
 
     @Test void deletingAndResubscribingDoesNotDeliverOlderApprovals() {
