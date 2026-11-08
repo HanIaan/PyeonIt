@@ -12,6 +12,15 @@ spring:
       ddl-auto: validate
     open-in-view: false
 pyeonit:
+  push:
+    allowed-endpoint-host-suffixes: ${PYEONIT_PUSH_ALLOWED_ENDPOINT_HOST_SUFFIXES:fcm.googleapis.com,updates.push.services.mozilla.com,push.services.mozilla.com,notify.windows.com,push.apple.com}
+    max-subscriptions-per-user: ${PYEONIT_PUSH_MAX_SUBSCRIPTIONS_PER_USER:10}
+    vapid-public-key: ${PYEONIT_PUSH_VAPID_PUBLIC_KEY:}
+    vapid-private-key: ${PYEONIT_PUSH_VAPID_PRIVATE_KEY:}
+    vapid-subject: ${PYEONIT_PUSH_VAPID_SUBJECT:}
+    scheduling-enabled: ${PYEONIT_PUSH_SCHEDULING_ENABLED:true}
+    notice-interval-ms: ${PYEONIT_PUSH_NOTICE_INTERVAL_MS:60000}
+    reminder-cron: ${PYEONIT_PUSH_REMINDER_CRON:0 0 9 * * *}
   # OAuth2 제공자. 키는 환경변수로만 넣는다. client-id 가 빈 제공자는 등록하지 않고, 전부 비면 oauth2Login 이 꺼진 채 뜬다(auth.OAuth2ClientConfig).
   # 형식은 spring.security.oauth2.client.* 와 같다. 콜백: {API}/login/oauth2/code/{kakao|google}
   oauth2:

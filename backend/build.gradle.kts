@@ -18,6 +18,13 @@ repositories {
 }
 
 dependencies {
+	implementation("nl.martijndwars:web-push:5.1.2") {
+		exclude(group = "com.beust", module = "jcommander")
+		exclude(group = "org.apache.httpcomponents", module = "httpasyncclient")
+		exclude(group = "org.asynchttpclient", module = "async-http-client")
+	}
+	implementation("org.bouncycastle:bcprov-jdk18on:1.83")
+	implementation("org.bitbucket.b_c:jose4j:0.9.6")
 	implementation("software.amazon.awssdk:s3:2.57.11") {
 		exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
 	}
