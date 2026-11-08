@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import { useCallback, useEffect, useState } from "react";
 import { buttonClass, Message } from "@/components/auth/auth-ui";
 import { ApiError, apiErrorMessage, redirectIfAuthRequired } from "@/lib/api";
@@ -103,18 +104,18 @@ export function NotificationSettingsPanel() {
     <div className="space-y-6" aria-busy={busy}>
       <Message>{error}</Message>
       {notice && (
-        <p role="status" className="rounded-xl bg-emerald-500/10 p-3 text-sm">
+        <p role="status" className="rounded-card bg-success/5 text-success p-3 text-sm">
           {notice}
         </p>
       )}
       {PUSH_MOCK && (
-        <p className="rounded-xl bg-blue-500/10 p-3 text-sm leading-6">
+        <p className="rounded-card bg-paper text-ink-2 p-3 text-sm leading-6">
           목 모드: 권한 요청과 서비스 워커 등록은 실제로 동작하지만 구독·설정은
           메모리에만 저장됩니다. 실제 푸시는 발송되지 않으며 새로고침하면 목
           데이터가 초기화됩니다.
         </p>
       )}
-      <section className="space-y-4 rounded-2xl border border-current/20 p-5">
+      <Card className="space-y-4 p-5">
         <h2 className="text-xl font-semibold">현재 브라우저 푸시</h2>
         <p role="status">
           구독 상태:{" "}
@@ -131,9 +132,8 @@ export function NotificationSettingsPanel() {
             } as Record<string, string>
           )[permission] ?? permission}
         </p>
-        <p className="text-sm leading-6 opacity-70">
-          이 설정은 현재 브라우저에 적용됩니다. 알림 종류는 계정의 모든
-          브라우저에 적용됩니다.
+        <p className="text-sm leading-6 text-ink-2">
+          현재 브라우저에 적용됩니다.
         </p>
         {unavailable && <Message>{unavailable}</Message>}
         {permission === "denied" && (
@@ -167,22 +167,22 @@ export function NotificationSettingsPanel() {
             알림 끄기
           </button>
         </div>
-      </section>
-      <section className="space-y-4 rounded-2xl border border-current/20 p-5">
+      </Card>
+      <Card className="space-y-4 p-5">
         <h2 className="text-xl font-semibold">알림 종류</h2>
         {settings ? (
-          <div className="divide-y divide-current/10">
+          <div className="divide-y divide-line">
             {(
               [
                 [
                   "newNoticeEnabled",
                   "새 공고",
-                  "관심학교의 새로운 승인 공고를 알려드립니다.",
+                  "관심학교 새 공고",
                 ],
                 [
                   "scheduleReminderEnabled",
                   "일정 D-1",
-                  "관심학교 일정 시작일의 한국 시간 기준 전날에 알려드립니다.",
+                  "관심학교 일정 전날 · 한국 시간",
                 ],
               ] as const
             ).map(([key, label, description]) => (
@@ -192,14 +192,14 @@ export function NotificationSettingsPanel() {
               >
                 <span>
                   <span className="block font-semibold">{label}</span>
-                  <span className="mt-1 block text-sm leading-6 opacity-70">
+                  <span className="mt-1 block text-sm leading-6 text-ink-2">
                     {description}
                   </span>
                 </span>
                 <input
                   type="checkbox"
                   role="switch"
-                  className="h-6 w-6 shrink-0 accent-blue-600"
+                  className="h-6 w-6 shrink-0 accent-ink"
                   checked={settings[key]}
                   disabled={busy}
                   onChange={(event) => {
@@ -228,8 +228,8 @@ export function NotificationSettingsPanel() {
             </button>
           </div>
         )}
-      </section>
-      <p className="text-sm leading-6 opacity-70">
+      </Card>
+      <p className="text-sm leading-6 text-ink-2">
         iOS Safari는 iOS 16.4 이상에서 공유 → 홈 화면에 추가 후 PWA로 실행해
         주세요. 알림은 HTTPS에서 지원하며 localhost는 예외입니다.
       </p>

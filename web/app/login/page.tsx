@@ -1,5 +1,8 @@
 "use client";
 
+import Image from "next/image";
+// 공식 리소스: https://developers.kakao.com/tool/resource/login (원본 색상·심볼 유지)
+import kakaoLogin from "@/components/auth/kakao-login.svg";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMe } from "@/components/auth/auth-provider";
@@ -31,31 +34,22 @@ export default function LoginPage() {
     if (state === "authenticated") router.replace("/me");
   }, [state, router]);
   return (
-    <section className="mx-auto max-w-md space-y-6 py-6 sm:py-12">
+    <section className="mx-auto max-w-md space-y-8 py-8 sm:py-16">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold">로그인</h1>
-        <p className="leading-7 opacity-70">
-          편입 준비의 다음 단계를 PyeonIt과 함께하세요.
-          <br />
-          처음이라면 소셜 로그인 후 닉네임을 설정합니다.
-        </p>
+        <h1 className="text-display font-semibold tracking-tight">로그인</h1>
       </div>
       <QueryMessage />
       <Message>{error}</Message>
-      <div className="grid gap-3">
-        <button
-          className={`${buttonClass} border-yellow-400 bg-yellow-300 text-black`}
-          onClick={() => startLogin("KAKAO")}
-        >
-          카카오로 로그인
-        </button>
-        <button className={buttonClass} onClick={() => startLogin("GOOGLE")}>
-          구글로 로그인
-        </button>
-      </div>
+      <button
+        aria-label="카카오로 로그인"
+        className="flex min-h-11 w-full justify-center rounded-control transition-transform active:scale-[0.98]"
+        onClick={() => startLogin("KAKAO")}
+      >
+        <Image src={kakaoLogin} alt="" width={224} height={46} className="h-auto w-full" priority />
+      </button>
       {AUTH_MOCK && (
-        <div className="space-y-2 rounded-2xl border border-dashed border-current/25 p-4">
-          <p className="text-sm opacity-70">
+        <div className="space-y-2 rounded-card border border-line p-4">
+          <p className="text-label text-ink-2">
             목 모드 · 새로고침하면 테스트 세션이 초기화됩니다.
           </p>
           <button
@@ -72,7 +66,7 @@ export default function LoginPage() {
       )}
       {ENABLE_DEV_LOGIN && (
         <form
-          className="space-y-3 rounded-2xl border border-current/20 p-4"
+          className="space-y-4 rounded-card border border-line bg-surface p-5"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
@@ -117,7 +111,7 @@ export default function LoginPage() {
               name="suspended"
               checked={suspended}
               onChange={(e) => setSuspended(e.target.checked)}
-              className="h-5 w-5"
+              className="h-5 w-5 accent-ink"
             />
             <span>정지 회원으로 로그인</span>
           </label>

@@ -63,7 +63,7 @@ function Documents({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">요강 승인 대기</h2>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-2">
             오래된 감지 순 · 추출 완료 / 검토 필요
           </p>
         </div>
@@ -79,14 +79,14 @@ function Documents({
         </button>
       </div>
       {message && (
-        <p role="status" className="rounded-lg bg-teal-50 p-3 text-sm">
+        <p role="status" className="rounded-control bg-success/5 text-success p-3 text-sm">
           {message}
         </p>
       )}
       {error && (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 p-3 text-sm text-red-800"
+          className="rounded-control bg-danger/5 p-3 text-sm text-danger"
         >
           {error}
         </p>
@@ -94,7 +94,7 @@ function Documents({
       <ResourceState {...resource} />
       {resource.data && (
         <>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-card border border-line bg-surface">
             <table className={table}>
               <caption className="p-3 text-left text-sm">
                 승인 대기 {resource.data.totalElements}건
@@ -146,11 +146,11 @@ function Documents({
         </>
       )}
       {selected && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <section className="rounded-card border border-line bg-surface p-4">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <h3 className="font-bold">{selected.title}</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-ink-3">
                 원문과 추출 결과를 대조한 후 처리해 주세요.
               </p>
             </div>
@@ -171,7 +171,7 @@ function Documents({
                     href={pdf}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-teal-800 underline"
+                    className="text-sm text-ink underline"
                   >
                     PDF 새 창으로 열기 ↗
                   </a>
@@ -180,15 +180,15 @@ function Documents({
                     src={pdf}
                     referrerPolicy="no-referrer"
                     sandbox="allow-scripts allow-same-origin allow-popups"
-                    className="mt-3 h-[32rem] w-full rounded-lg border border-slate-200"
+                    className="mt-3 h-[32rem] w-full rounded-control border border-line"
                   />
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-ink-3">
                     임베드가 차단되거나 보이지 않으면 위 새 창 링크를 이용해
                     주세요.
                   </p>
                 </>
               ) : (
-                <p className="rounded-lg bg-slate-100 p-6 text-sm">
+                <p className="rounded-control bg-paper p-6 text-sm">
                   원본 PDF 링크가 없습니다.
                   {source && (
                     <a
@@ -205,7 +205,7 @@ function Documents({
             </div>
             <Extraction document={selected} />
           </div>
-          <div className="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-4">
+          <div className="mt-6 flex justify-end gap-2 border-t border-line pt-4">
             <button
               className={secondary}
               disabled={busy}

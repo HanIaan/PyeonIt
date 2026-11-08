@@ -33,11 +33,11 @@ export function Extraction({ document }: { document: AdminDocument }) {
   const groups = [...new Set(quotas.map((row) => text(row["계열"])))];
   return (
     <div className="space-y-5">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink-3">
         추출 #{run.id} · {run.model}
       </p>
       {run.error && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger">
           추출 오류: {run.error}
         </p>
       )}
@@ -47,8 +47,8 @@ export function Extraction({ document }: { document: AdminDocument }) {
           <span
             className={
               validation.status === "passed"
-                ? "text-teal-800"
-                : "text-amber-800"
+                ? "text-ink"
+                : "text-warning"
             }
           >
             {validationLabel(validation.status)}
@@ -90,9 +90,9 @@ export function Extraction({ document }: { document: AdminDocument }) {
         {groups.map((group) => (
           <div
             key={group}
-            className="mb-3 overflow-x-auto rounded-lg border border-slate-200"
+            className="mb-3 overflow-x-auto rounded-control border border-line"
           >
-            <h5 className="bg-slate-100 px-3 py-2 text-sm font-semibold">
+            <h5 className="bg-paper px-3 py-2 text-sm font-semibold">
               {group}
             </h5>
             <table className={table}>
@@ -126,13 +126,13 @@ export function Extraction({ document }: { document: AdminDocument }) {
         <h4 className="mb-2 font-bold">전형 일정</h4>
         <ul className="space-y-2">
           {rows(result["일정"]).map((s, i) => (
-            <li key={i} className="rounded-lg bg-slate-50 p-3 text-sm">
+            <li key={i} className="rounded-control bg-paper p-3 text-sm">
               <strong>{text(s["항목"])}</strong>
               <p>
                 {text(s["시작"])}
                 {s["종료"] ? ` ~ ${text(s["종료"])}` : ""}
               </p>
-              <p className="text-slate-600">{text(s["비고"])}</p>
+              <p className="text-ink-2">{text(s["비고"])}</p>
             </li>
           ))}
         </ul>
@@ -142,7 +142,7 @@ export function Extraction({ document }: { document: AdminDocument }) {
       </section>
       <details className="text-xs">
         <summary className="cursor-pointer">추출 원본 JSON / 검증 상세</summary>
-        <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-slate-100 p-3">
+        <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-control bg-paper p-3">
           {JSON.stringify(
             { result: run.result, validation: run.validation },
             null,

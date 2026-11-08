@@ -8,11 +8,11 @@ import { NotificationSettingsPanel } from "@/components/push/notification-settin
 export default function NotificationsPage() {
   const { state, error, refresh } = useMe();
   return (
-    <section className="mx-auto max-w-xl space-y-6">
-      <Link href="/me" className="text-sm underline underline-offset-4">
+    <section className="mx-auto max-w-xl space-y-8 py-4">
+      <Link href="/me" className={buttonClass}>
         내 정보
       </Link>
-      <h1 className="text-3xl font-bold">알림 설정</h1>
+      <h1 className="text-display font-semibold tracking-tight">알림 설정</h1>
       {state === "loading" && (
         <p role="status">로그인 상태를 확인하고 있습니다.</p>
       )}

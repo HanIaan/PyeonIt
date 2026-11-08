@@ -10,17 +10,17 @@ const cards = [
   {
     href: "/admin/documents",
     label: "승인 대기 요강",
-    description: "원본 PDF와 추출 결과를 대조하고 게시를 승인합니다.",
+    description: "원본 PDF · 추출 결과 대조",
   },
   {
     href: "/admin/reports",
     label: "미처리 신고",
-    description: "신고 내용을 확인하고 처리 또는 기각합니다.",
+    description: "신고 확인 · 처리 · 기각",
   },
   {
     href: "/admin/sanctions",
     label: "활성 제재",
-    description: "회원 제재를 등록하고 활성 제재를 해제합니다.",
+    description: "제재 등록 · 해제",
   },
 ];
 async function summary() {
@@ -49,16 +49,16 @@ export default function AdminHome() {
           <Link
             key={card.href}
             href={card.href}
-            className="rounded-xl border border-slate-200 bg-white p-5 hover:border-teal-600"
+            className="rounded-card border border-line bg-surface p-5 hover:border-ink"
           >
             <h3 className="font-semibold">{card.label}</h3>
-            <div className="my-4 text-3xl font-bold text-teal-800">
+            <div className="my-4 text-display font-semibold tracking-tight text-ink">
               {resource.loading ? "…" : (resource.data?.[i] ?? "목록 보기")}
             </div>
-            <p className="text-sm leading-6 text-slate-600">
+            <p className="text-sm leading-6 text-ink-2">
               {card.description}
             </p>
-            <p className="mt-4 text-sm font-semibold text-teal-800">
+            <p className="mt-4 text-sm font-semibold text-ink">
               관리하기 →
             </p>
           </Link>

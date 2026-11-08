@@ -136,21 +136,21 @@ function Sanctions({
   return (
     <div className="space-y-4">
       {message && (
-        <p role="status" className="rounded-lg bg-teal-50 p-3 text-sm">
+        <p role="status" className="rounded-control bg-success/5 text-success p-3 text-sm">
           {message}
         </p>
       )}
       {error && (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 p-3 text-sm text-red-800"
+          className="rounded-control bg-danger/5 p-3 text-sm text-danger"
         >
           {error}
         </p>
       )}
       <form
         onSubmit={prepare}
-        className="space-y-4 rounded-xl border border-slate-200 bg-white p-5"
+        className="space-y-4 rounded-card border border-line bg-surface p-5"
       >
         <h3 className="font-bold">제재 등록</h3>
         <fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2">
@@ -195,7 +195,7 @@ function Sanctions({
           </label>
           <div className="text-sm">
             <p>시작 시각</p>
-            <p className="mt-2 text-slate-600">등록 즉시 · 서버에서 기록</p>
+            <p className="mt-2 text-ink-2">등록 즉시 · 서버에서 기록</p>
           </div>
           {type === "SUSPEND" ? (
             <label className="text-sm">
@@ -209,7 +209,7 @@ function Sanctions({
               />
             </label>
           ) : (
-            <p className="self-center text-sm text-slate-600">
+            <p className="self-center text-sm text-ink-2">
               {type === "BAN"
                 ? "무기한 정지 · 해제 전까지 유지"
                 : "종료 시각 없음 · 회원 상태를 변경하지 않는 경고"}
@@ -221,7 +221,7 @@ function Sanctions({
         </button>
       </form>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-3">
           해제와 자연 만료는 API에서 구분하지 않아 종료 이력으로 함께
           표시합니다.
         </p>
@@ -232,7 +232,7 @@ function Sanctions({
       <ResourceState {...resource} />
       {resource.data && (
         <>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-card border border-line bg-surface">
             <table className={table}>
               <caption className="p-3 text-left">
                 {activeOnly ? "활성" : "전체"} 제재{" "}
@@ -253,12 +253,12 @@ function Sanctions({
                   <tr key={s.id}>
                     <td>
                       {s.user.nickname ?? "탈퇴 회원"}
-                      <p className="text-slate-500">#{s.user.id}</p>
+                      <p className="text-ink-3">#{s.user.id}</p>
                     </td>
                     <td>
                       {types[s.type]}
                       <p
-                        className={s.active ? "text-red-700" : "text-slate-500"}
+                        className={s.active ? "text-danger" : "text-ink-3"}
                       >
                         {s.active
                           ? "활성"
