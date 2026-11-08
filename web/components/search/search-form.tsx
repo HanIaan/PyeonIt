@@ -10,7 +10,7 @@ export default function SearchForm({ schools = false }: { schools?: boolean }) {
   return (
     <form
       key={`${params.get("q")}:${params.get("scope")}`}
-      className="mb-5 space-y-3"
+      className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         const form = new FormData(e.currentTarget);
@@ -34,15 +34,19 @@ export default function SearchForm({ schools = false }: { schools?: boolean }) {
       }}
     >
       {!schools && (
-        <fieldset className="flex gap-4 text-sm">
+        <fieldset className="flex flex-wrap gap-2">
           <legend className="sr-only">검색 대상</legend>
           {[
             ["posts", "게시물 검색"],
             ["users", "작성자 검색"],
           ].map(([value, label]) => (
-            <label key={value} className="flex min-h-11 items-center gap-2">
+            <label
+              key={value}
+              className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-pill border border-line bg-surface px-4 text-label font-semibold text-ink-2 has-checked:border-ink has-checked:bg-lime has-checked:text-ink"
+            >
               <input
                 type="radio"
+                className="size-4 accent-ink"
                 name="scope"
                 value={value}
                 defaultChecked={
@@ -62,7 +66,7 @@ export default function SearchForm({ schools = false }: { schools?: boolean }) {
             name="q"
             className={input}
             defaultValue={params.get("q") ?? ""}
-            placeholder={schools ? "학교명 또는 별칭" : "검색어 2~50자"}
+            placeholder={schools ? "학교명 또는 별칭" : "검색어"}
           />
         </label>
         <button className={primary}>검색</button>

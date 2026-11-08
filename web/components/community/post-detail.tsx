@@ -22,7 +22,9 @@ import {
   dateLabel,
   button,
   primary,
+  ghost,
   input,
+  fieldLabel,
   handleError,
   useCommunityAuth,
 } from "./shared";
@@ -48,9 +50,9 @@ function CommentRow({
     [body, setBody] = useState(c.body ?? "");
   return (
     <li
-      className={`space-y-3 border-b border-slate-200 py-4 ${c.parentId ? "ml-5 border-l pl-4" : ""}`}
+      className={`space-y-2 py-4 ${c.parentId ? "ml-4 border-l-2 border-line pl-4" : "border-b border-line"}`}
     >
-      <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+      <div className="flex flex-wrap gap-3 text-caption text-ink-3">
         <span>
           {c.status === "DELETED" ? (
             "삭제된 댓글"
@@ -93,20 +95,20 @@ function CommentRow({
           </div>
         </form>
       ) : (
-        <p className="whitespace-pre-wrap break-words text-sm">
+        <p className="whitespace-pre-wrap break-words text-body">
           {c.body ?? "삭제된 댓글입니다."}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1">
         {c.parentId === null && c.status === "PUBLISHED" && (
-          <button className={button} onClick={() => reply(c)}>
+          <button className={ghost} onClick={() => reply(c)}>
             답글
           </button>
         )}
         {c.mine && c.status === "PUBLISHED" && (
           <>
             <button
-              className={button}
+              className={ghost}
               disabled={busy}
               onClick={() => {
                 setBody(c.body ?? "");
@@ -116,7 +118,7 @@ function CommentRow({
               수정
             </button>
             <button
-              className={button}
+              className={ghost}
               disabled={busy}
               onClick={() => {
                 if (window.confirm("댓글을 삭제하시겠습니까?")) void act(c.id);
@@ -223,27 +225,36 @@ export default function PostDetail({ id }: { id: number }) {
     <Frame title={post?.title ?? "글 상세"}>
       <Message>{error}</Message>
       <Message>{notice}</Message>
-      {!post && !error && <p role="status">글을 불러오는 중입니다…</p>}
+      {!post && !error && (
+        <p role="status" className="text-label text-ink-3">
+          불러오는 중…
+        </p>
+      )}
       {post && (
         <>
-          <div className="flex flex-wrap gap-3 text-sm text-slate-500">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-label text-ink-3">
             <span>{post.board.name}</span>
             <AuthorLink author={post.author} />
             <time dateTime={post.createdAt}>{dateLabel(post.createdAt)}</time>
             <span>조회 {post.viewCount}</span>
           </div>
           <Tags schools={post.universities} />
-          <article className="space-y-5 border-y border-slate-200 py-6">
-            <p className="whitespace-pre-wrap break-words leading-8">
+          <article className="space-y-4 border-y border-line py-6">
+            <p className="whitespace-pre-wrap break-words text-body leading-8">
               {post.body}
             </p>
             {post.images.map((img, i) => (
-              <a key={img.id} href={resolveApiUrl(img.url)} target="_blank" rel="noreferrer">
+              <a
+                key={img.id}
+                href={resolveApiUrl(img.url)}
+                target="_blank"
+                rel="noreferrer"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={resolveApiUrl(img.url)}
                   alt={`첨부 이미지 ${i + 1}`}
-                  className="my-4 max-h-[36rem] w-auto max-w-full rounded-xl"
+                  className="max-h-[36rem] w-auto max-w-full rounded-control border border-line"
                 />
               </a>
             ))}
@@ -296,7 +307,7 @@ export default function PostDetail({ id }: { id: number }) {
           </div>
           {reporting && (
             <form
-              className="space-y-3 rounded-xl border border-slate-300 p-4"
+              className="space-y-4 rounded-card border border-line bg-surface p-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 void run(async () => {
@@ -306,11 +317,11 @@ export default function PostDetail({ id }: { id: number }) {
                 });
               }}
             >
-              <h2 className="font-semibold">글 신고</h2>
-              <label className="block text-sm">
-                신고 사유
+              <h2 className="text-title font-semibold">글 신고</h2>
+              <label className={fieldLabel}>
+                <span>신고 사유</span>
                 <select
-                  className={`${input} mt-1`}
+                  className={input}
                   value={reason}
                   onChange={(e) =>
                     setReason(e.target.value as S["ReportReason"])
@@ -323,13 +334,13 @@ export default function PostDetail({ id }: { id: number }) {
                   ))}
                 </select>
               </label>
-              <label className="block text-sm">
-                상세 내용 (선택, 최대 500자)
+              <label className={fieldLabel}>
+                <span>상세 내용 (선택)</span>
                 <textarea
                   maxLength={500}
                   value={detail}
                   onChange={(e) => setDetail(e.target.value)}
-                  className={`${input} mt-1`}
+                  className={input}
                 />
               </label>
               <div className="flex gap-2">
@@ -346,7 +357,9 @@ export default function PostDetail({ id }: { id: number }) {
               </div>
             </form>
           )}
-          <h2 className="pt-5 text-lg font-bold">댓글 {post.commentCount}</h2>
+          <h2 className="pt-4 text-title font-bold">
+            댓글 {post.commentCount}
+          </h2>
           {comments && (
             <>
               <ul>
@@ -375,7 +388,9 @@ export default function PostDetail({ id }: { id: number }) {
                 ))}
               </ul>
               {!comments.content.length && (
-                <p className="text-sm text-slate-500">첫 댓글을 남겨 보세요.</p>
+                <p className="py-6 text-center text-label text-ink-3">
+                  아직 댓글이 없습니다
+                </p>
               )}
               <Pager
                 page={page}
@@ -397,10 +412,10 @@ export default function PostDetail({ id }: { id: number }) {
             }}
           >
             {parent && (
-              <div className="flex items-center justify-between rounded-lg bg-indigo-50 p-3 text-sm text-indigo-800">
+              <div className="flex items-center justify-between gap-3 rounded-control border border-line bg-surface py-1 pl-4 pr-1 text-label">
                 <span>
-                  <AuthorLink author={parent.author} />님에게 답글 · 답글은 한 단계만
-                  가능합니다.
+                  <AuthorLink author={parent.author} />
+                  님에게 답글
                 </span>
                 <button
                   type="button"
@@ -411,24 +426,30 @@ export default function PostDetail({ id }: { id: number }) {
                 </button>
               </div>
             )}
-            <label htmlFor="comment-body" className="block text-sm">
+            <label
+              htmlFor="comment-body"
+              className="block text-label font-medium"
+            >
               {parent ? "답글" : "댓글"} 작성
             </label>
             <textarea
               id="comment-body"
+              rows={3}
               className={input}
               required
               maxLength={2000}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="서로를 존중하는 댓글을 남겨 주세요. (최대 2,000자)"
             />
             <button className={primary} disabled={busy || !body.trim()}>
               등록
             </button>
             {auth.state === "anonymous" && (
-              <p className="text-sm">
-                <Link href="/login" className="text-indigo-600 underline">
+              <p className="text-label text-ink-2">
+                <Link
+                  href="/login"
+                  className="font-semibold text-ink underline"
+                >
                   로그인
                 </Link>{" "}
                 후 댓글을 작성할 수 있습니다.

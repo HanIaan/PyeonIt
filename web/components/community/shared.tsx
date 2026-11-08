@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { useMe } from "@/lib/auth";
 import { ApiError, apiErrorMessage, redirectIfAuthRequired } from "@/lib/api";
 import type { S } from "@/lib/community-api";
-const buttonBase =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-40";
-export const button = `${buttonBase} border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800`;
-export const primary = `${buttonBase} border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700`;
+import { buttonClass } from "@/components/ui/button";
+export const button = buttonClass("secondary");
+export const primary = buttonClass("primary");
+export const ghost = buttonClass("ghost");
 export const input =
-  "w-full rounded-xl border border-slate-300 bg-transparent p-3 text-base";
+  "min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 py-2.5 text-body placeholder:text-ink-3 disabled:opacity-45";
+export const fieldLabel = "block space-y-1.5 text-label font-medium";
 export function errorText(e: unknown) {
   if (e instanceof ApiError) {
     if (e.code === "ACCOUNT_SUSPENDED")
@@ -66,7 +67,7 @@ export function Message({ children }: { children: React.ReactNode }) {
   return children ? (
     <p
       role="status"
-      className="my-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900"
+      className="rounded-control border border-line-strong bg-surface p-4 text-label"
     >
       {children}
     </p>
@@ -74,20 +75,29 @@ export function Message({ children }: { children: React.ReactNode }) {
 }
 export function Frame({
   title,
+  action,
+  back = true,
   children,
 }: {
   title: string;
+  action?: React.ReactNode;
+  back?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mx-auto max-w-3xl space-y-5 text-slate-900 dark:text-slate-100">
-      <Link
-        href="/community"
-        className="text-sm text-indigo-600 dark:text-indigo-300"
-      >
-        커뮤니티
-      </Link>
-      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+    <section className="mx-auto max-w-3xl space-y-6">
+      {back && (
+        <Link
+          href="/community"
+          className="inline-flex min-h-11 items-center rounded-control text-label font-medium text-ink-2 hover:text-ink"
+        >
+          ← 커뮤니티
+        </Link>
+      )}
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="min-w-0 break-words text-heading font-bold">{title}</h1>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -97,7 +107,7 @@ export function Tags({ schools }: { schools: S["UniversitySummary"][] }) {
     <span className="flex flex-wrap gap-2">
       {schools.map((u) => (
         <Link
-          className="rounded-md bg-indigo-50 px-2 py-1 text-xs text-indigo-700"
+          className="rounded-pill border border-line px-2.5 py-0.5 text-caption font-medium text-ink-2 hover:border-ink hover:text-ink"
           key={u.id}
           href={`/community?universityId=${u.id}`}
         >
@@ -127,7 +137,7 @@ export function Pager({
   return (
     <nav
       aria-label="페이지 이동"
-      className="flex items-center justify-center gap-4 py-4"
+      className="flex items-center justify-center gap-3 py-4"
     >
       <button
         className={button}
@@ -136,7 +146,7 @@ export function Pager({
       >
         이전
       </button>
-      <span className="text-sm">
+      <span className="min-w-16 text-center text-label text-ink-2 tabular-nums">
         {page + 1} / {Math.max(1, total)}
       </span>
       <button
@@ -152,7 +162,10 @@ export function Pager({
 
 export function AuthorLink({ author }: { author: S["UserSummary"] | null }) {
   return author?.nickname != null ? (
-    <Link className="hover:underline" href={`/users/${author.id}`}>
+    <Link
+      className="font-medium text-ink-2 hover:text-ink hover:underline"
+      href={`/users/${author.id}`}
+    >
       {author.nickname}
     </Link>
   ) : (
