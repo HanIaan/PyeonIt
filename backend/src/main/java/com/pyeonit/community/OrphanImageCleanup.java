@@ -42,19 +42,32 @@ class OrphanImageCleanup {
   }
 
   void cleanup() {
-    Timestamp cutoff = Timestamp.from(clock.instant().minus(retention));
+    cleanup(Timestamp.from(clock.instant().minus(retention)), BATCH_SIZE, false);
+  }
+
+  void cleanupDeleted(Duration retention, int batchSize) {
+    cleanup(Timestamp.from(clock.instant().minus(retention)), batchSize, true);
+  }
+
+  private void cleanup(Timestamp cutoff, int batchSize, boolean deleted) {
+    String from = deleted
+        ? " from post_images i join posts p on p.id=i.post_id"
+        : " from post_images i";
+    String eligible = deleted
+        ? "p.status='DELETED' and p.updated_at < ?"
+        : "i.post_id is null and i.created_at < ?";
     var candidates = db.queryForList(
-        "select id from post_images where post_id is null and created_at < ?"
-            + " order by created_at,id limit ?",
-        Long.class, cutoff, BATCH_SIZE);
+        "select i.id" + from + " where " + eligible
+            + (deleted ? " order by p.updated_at,i.id limit ?" : " order by i.created_at,i.id limit ?"),
+        Long.class, cutoff, batchSize);
     for (long id : candidates) {
       try {
         transaction.executeWithoutResult(status -> {
           // CommunityService.write locks the same row before attaching it. Recheck eligibility
           // under that lock; another worker or an attachment holding it is skipped this cycle.
           var keys = db.queryForList(
-              "select storage_key from post_images"
-                  + " where id=? and post_id is null and created_at < ? for update skip locked",
+              "select i.storage_key" + from + " where i.id=? and " + eligible
+                  + (deleted ? " for update of i,p skip locked" : " for update of i skip locked"),
               String.class, id, cutoff);
           if (keys.isEmpty()) return;
           try {
@@ -62,13 +75,13 @@ class OrphanImageCleanup {
           } catch (IOException e) {
             throw new UncheckedIOException(e);
           }
-          db.update("delete from post_images where id=? and post_id is null and created_at < ?",
-              id, cutoff);
+          // Eligibility and both the image and its deleted post remain locked until commit.
+          db.update("delete from post_images where id=?", id);
         });
       } catch (RuntimeException e) {
         // Keep failures isolated and retry next cycle. Do not log storage keys or exception
         // messages, which may contain provider credentials or signed URLs.
-        log.warn("Orphan image cleanup failed for image {}; retrying next cycle", id);
+        log.warn("Image cleanup failed for image {}; retrying next cycle", id);
       }
     }
   }

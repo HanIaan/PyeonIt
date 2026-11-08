@@ -465,6 +465,7 @@ public class CommunityService {
     String ext = detect(bytes);
     String type = "image/" + (ext.equals("jpg") ? "jpeg" : ext);
     if (!type.equals(file.getContentType())) throw invalid();
+    bytes = ImageMetadata.strip(bytes, ext);
     String key = storage.store(bytes, ext);
     TransactionSynchronizationManager.registerSynchronization(
         new TransactionSynchronization() {

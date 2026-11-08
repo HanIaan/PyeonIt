@@ -276,7 +276,7 @@ class CommunityApiTests {
   }
 
   byte[] png() {
-    return new byte[] {(byte) 137, 80, 78, 71, 13, 10, 26, 10, 1};
+    return ImageFixtures.read("clean.png");
   }
 
   long upload(long user, String type, byte[] bytes) throws Exception {
@@ -295,12 +295,7 @@ class CommunityApiTests {
   void imageMagicSizeStorageOwnershipAndReplacement() throws Exception {
     long image = upload(me, "image/png", png());
     for (var type : List.of("image/jpeg", "image/gif", "image/webp")) {
-      byte[] b =
-          switch (type) {
-            case "image/jpeg" -> new byte[] {(byte) 255, (byte) 216, (byte) 255, 0};
-            case "image/gif" -> "GIF89a123".getBytes();
-            default -> "RIFF1234WEBPabc".getBytes();
-          };
+      byte[] b = ImageFixtures.read("clean." + (type.equals("image/jpeg") ? "jpg" : type.substring(6)));
       upload(me, type, b);
     }
     String key =
