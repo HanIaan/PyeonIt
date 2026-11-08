@@ -28,7 +28,7 @@ export function Confirm({
         e.preventDefault();
         if (!busy) onCancel();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 text-slate-900 shadow-xl backdrop:bg-slate-900/50"
+      className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-card bg-surface p-6 text-ink backdrop:bg-ink/50"
     >
       <h3 id="admin-confirm-title" className="text-lg font-bold">
         {title}

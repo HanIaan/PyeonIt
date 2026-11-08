@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMe } from "@/components/auth/auth-provider";
@@ -59,12 +62,14 @@ function Profile() {
   }
   return (
     <div className="space-y-6">
-      <section className="space-y-3 rounded-2xl border border-current/20 p-5">
+      <Card className="space-y-3 p-5">
         <h2 className="text-xl font-semibold">{me.nickname}</h2>
-        <p>권한: {me.role === "ADMIN" ? "관리자" : "일반 회원"}</p>
+        <Badge tone={me.role === "ADMIN" ? "lime" : "neutral"}>
+          {me.role === "ADMIN" ? "관리자" : "일반 회원"}
+        </Badge>
         {me.status === "SUSPENDED" && (
           <div className="space-y-2">
-            <span className="inline-block rounded-full bg-amber-500/20 px-3 py-1 text-sm font-semibold">
+            <span className="inline-block rounded-full bg-warning/10 text-warning px-3 py-1 text-sm font-semibold">
               이용 정지
             </span>
             <p className="text-sm leading-6">
@@ -76,18 +81,18 @@ function Profile() {
             </p>
           </div>
         )}
-      </section>
-      <a href="/me/notifications" onClick={(event) => { event.preventDefault(); router.push("/me/notifications"); }} className="block text-sm underline underline-offset-4">알림 설정</a>
+      </Card>
+      <a href="/me/notifications" onClick={(event) => { event.preventDefault(); router.push("/me/notifications"); }} className={buttonClass}>알림 설정</a>
       <QueryMessage />
       <Message>{error}</Message>
       {notice && (
-        <p role="status" className="rounded-xl bg-emerald-500/10 p-3 text-sm">
+        <p role="status" className="rounded-card bg-success/5 text-success p-3 text-sm">
           {notice}
         </p>
       )}
-      <section className="space-y-4 rounded-2xl border border-current/20 p-5">
+      <Card className="space-y-4 p-5">
         <h2 className="text-xl font-semibold">닉네임 변경</h2>
-        <p className="text-sm opacity-70">
+        <p className="text-sm text-ink-2">
           닉네임은 30일에 한 번 변경할 수 있습니다.
         </p>
         {nicknameLocked && (
@@ -119,14 +124,13 @@ function Profile() {
             }
           }}
         />
-      </section>
-      <section className="space-y-4 rounded-2xl border border-current/20 p-5">
+      </Card>
+      <Card className="space-y-4 p-5">
         <h2 className="text-xl font-semibold">연결된 소셜 계정</h2>
-        <p className="text-sm leading-6 opacity-70">
-          마지막 로그인 계정은 해제할 수 없습니다. 다른 계정을 먼저 연결해
-          주세요.
+        <p className="text-sm leading-6 text-ink-2">
+          마지막 로그인 계정은 해제할 수 없습니다.
         </p>
-        <ul className="divide-y divide-current/10">
+        <ul className="divide-y divide-line">
           {me.socialAccounts.map((account) => (
             <li
               key={account.provider}
@@ -134,7 +138,7 @@ function Profile() {
             >
               <div>
                 <p className="font-medium">{providerNames[account.provider]}</p>
-                <p className="text-xs opacity-70">
+                <p className="text-xs text-ink-2">
                   연결일: {dateLabel(account.linkedAt)}
                 </p>
               </div>
@@ -154,7 +158,7 @@ function Profile() {
           ))}
         </ul>
         <div className="flex flex-wrap gap-2">
-          {(["KAKAO", "GOOGLE"] as Provider[])
+          {(["KAKAO"] as Provider[])
             .filter(
               (provider) =>
                 !me.socialAccounts.some((a) => a.provider === provider),
@@ -175,9 +179,14 @@ function Profile() {
               </button>
             ))}
         </div>
-      </section>
-      <section className="space-y-4 rounded-2xl border border-current/20 p-5">
+      </Card>
+      <Card className="space-y-4 p-5">
         <h2 className="text-xl font-semibold">계정 관리</h2>
+        {me.role === "ADMIN" && (
+          <Link href="/admin" className={`${buttonClass} mr-2`}>
+            관리자 진입
+          </Link>
+        )}
         <button
           className={buttonClass}
           disabled={busy}
@@ -185,7 +194,7 @@ function Profile() {
         >
           로그아웃
         </button>
-        <div className="space-y-3 border-t border-current/15 pt-4">
+        <div className="space-y-3 border-t border-line pt-4">
           <h3 className="font-semibold">회원 탈퇴</h3>
           <p className="text-sm leading-6">
             탈퇴하면 소셜 계정 연결이 모두 삭제되고 닉네임이 비워지며 작성한
@@ -193,7 +202,7 @@ function Profile() {
           </p>
           {withdrawStep === 0 && (
             <button
-              className={`${buttonClass} text-red-600 dark:text-red-400`}
+              className={`${buttonClass} text-danger!`}
               disabled={busy}
               onClick={() => setWithdrawStep(1)}
             >
@@ -228,7 +237,7 @@ function Profile() {
               </p>
               <div className="flex gap-2">
                 <button
-                  className={`${buttonClass} text-red-600 dark:text-red-400`}
+                  className={`${buttonClass} text-danger!`}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
@@ -251,14 +260,14 @@ function Profile() {
             </div>
           )}
         </div>
-      </section>
+      </Card>
     </div>
   );
 }
 export default function MePage() {
   return (
-    <section className="mx-auto max-w-xl space-y-6">
-      <h1 className="text-3xl font-bold">내 정보</h1>
+    <section className="mx-auto max-w-xl space-y-8 py-4">
+      <h1 className="text-display font-semibold tracking-tight">내 정보</h1>
       <AuthGate>
         <Profile />
       </AuthGate>

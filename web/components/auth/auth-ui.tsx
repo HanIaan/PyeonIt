@@ -3,19 +3,20 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useMe } from "./auth-provider";
-import { nicknameHelp, nicknamePattern } from "@/lib/auth-api";
+import { Button, buttonClass as uiButtonClass } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { nicknamePattern } from "@/lib/auth-api";
 import { apiErrorMessage } from "@/lib/api";
 
-export const buttonClass =
-  "inline-flex min-h-11 items-center justify-center rounded-xl border border-current/20 px-4 py-2 text-sm font-semibold hover:bg-current/5 disabled:cursor-not-allowed disabled:opacity-45";
-export const primaryClass = `${buttonClass} bg-foreground text-background hover:opacity-85`;
+export const buttonClass = uiButtonClass("secondary");
+export const primaryClass = uiButtonClass("primary");
 export const inputClass =
-  "min-h-11 w-full rounded-xl border border-current/25 bg-transparent px-3 py-2";
+  "min-h-11 w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-body text-ink disabled:opacity-45";
 export function Message({ children }: { children: React.ReactNode }) {
   return children ? (
     <p
       role="alert"
-      className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm leading-6"
+      className="rounded-control border border-warning/30 bg-warning/5 p-3 text-label leading-6 text-warning"
     >
       {children}
     </p>
@@ -81,28 +82,25 @@ export function NicknameForm({
         }
       }}
     >
-      <label className="block space-y-2">
-        <span className="font-medium">닉네임</span>
-        <input
-          className={inputClass}
-          name="nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          minLength={2}
-          maxLength={12}
-          required
-          disabled={disabled || busy}
-          aria-describedby="nickname-help"
-          autoComplete="nickname"
-        />
-      </label>
-      <p id="nickname-help" className="text-sm leading-6 opacity-70">
-        {nicknameHelp}
+      <Input
+        label="닉네임"
+        name="nickname"
+        value={nickname}
+        onChange={(e) => setNickname(e.target.value)}
+        minLength={2}
+        maxLength={12}
+        required
+        disabled={disabled || busy}
+        aria-describedby="nickname-help"
+        autoComplete="nickname"
+      />
+      <p id="nickname-help" className="text-caption text-ink-2">
+        한글·영문·숫자 2~12자
       </p>
       <Message>{error}</Message>
-      <button className={primaryClass} disabled={disabled || busy}>
+      <Button type="submit" disabled={disabled || busy}>
         {busy ? "처리 중…" : label}
-      </button>
+      </Button>
     </form>
   );
 }

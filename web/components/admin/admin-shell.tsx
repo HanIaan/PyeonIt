@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { buttonClass } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -17,14 +18,12 @@ const FailureContext = createContext<(error: unknown) => void>(() => {});
 export function useAdminFailure() {
   return useContext(FailureContext);
 }
-export const button =
-  "rounded-lg bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-40";
-export const secondary =
-  "rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100 disabled:opacity-40";
+export const button = buttonClass("primary");
+export const secondary = buttonClass("secondary", "shrink-0");
 export const input =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900";
+  "min-h-11 w-full min-w-0 rounded-control border border-line-strong bg-surface px-3 py-2 text-label text-ink disabled:opacity-45";
 export const table =
-  "w-full text-left text-sm [&_th]:whitespace-nowrap [&_th]:bg-slate-100 [&_th]:p-3 [&_th]:font-medium [&_td]:border-b [&_td]:border-slate-100 [&_td]:p-3";
+  "w-full text-left text-sm [&_th]:whitespace-nowrap [&_th]:bg-paper [&_th]:p-3 [&_th]:font-medium [&_td]:border-b [&_td]:border-line [&_td]:p-3";
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const auth = useMe();
   const pathname = usePathname();
@@ -49,14 +48,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     notice = auth.error || "로그인 상태를 확인하지 못했습니다.";
   if (notice || !me)
     return (
-      <section className="rounded-xl border border-slate-200 p-6">
+      <section className="rounded-card border border-line p-6">
         <h1 className="text-xl font-bold">관리자 접근 안내</h1>
         <p role="status" className="my-4">
           {notice}
         </p>
         {(denied === "login" ||
           (!ADMIN_MOCK && ["anonymous", "pending"].includes(auth.state))) && (
-          <Link href="/login" className="underline">
+          <Link href="/login" className={buttonClass("ghost")}>
             로그인으로 이동
           </Link>
         )}
@@ -69,24 +68,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     );
   return (
     <FailureContext.Provider value={onFailure}>
-      <section className="space-y-6 rounded-2xl bg-slate-50 p-4 text-slate-900 sm:p-6">
+      <section className="min-w-0 space-y-6 rounded-card bg-paper p-4 text-ink sm:p-6">
         <header>
-          <div className="text-xs font-bold tracking-widest text-teal-800">
+          <div className="text-xs font-bold tracking-widest text-ink">
             PYEONIT · ADMIN
           </div>
           <h1 className="mt-2 text-2xl font-bold">운영 관리</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            요강 검토와 커뮤니티 운영을 한곳에서 관리합니다.
+          <p className="mt-1 text-sm text-ink-2">
+            요강 · 커뮤니티
           </p>
           {ADMIN_MOCK && (
-            <p className="mt-2 text-xs text-amber-800">
+            <p className="mt-2 text-xs text-warning">
               목 관리자 · 예시 데이터 (변경 내용은 현재 실행 중에만 유지됩니다)
             </p>
           )}
         </header>
         <nav
           aria-label="관리자 메뉴"
-          className="flex flex-wrap gap-2 border-b border-slate-200 pb-4"
+          className="flex flex-wrap gap-2 border-b border-line pb-4"
         >
           {[
             ["/admin", "요약"],
@@ -98,7 +97,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               key={href}
               href={href}
               aria-current={pathname === href ? "page" : undefined}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold ${pathname === href ? "bg-teal-800 text-white" : "bg-white hover:bg-slate-100"}`}
+              className={`inline-flex min-h-11 items-center rounded-pill px-4 py-2 text-label font-semibold transition-transform active:scale-[0.98] ${pathname === href ? "bg-lime text-ink" : "bg-surface hover:bg-paper"}`}
             >
               {label}
             </Link>
@@ -168,7 +167,7 @@ export function ResourceState({
 }) {
   if (loading)
     return (
-      <p role="status" className="p-6 text-slate-600">
+      <p role="status" className="p-6 text-ink-2">
         불러오는 중…
       </p>
     );
@@ -176,7 +175,7 @@ export function ResourceState({
     return (
       <div
         role="alert"
-        className="rounded-lg border border-red-200 bg-red-50 p-4"
+        className="rounded-control border border-danger/30 bg-danger/5 p-4"
       >
         <p>{error}</p>
         <button className={`${secondary} mt-3`} onClick={reload}>

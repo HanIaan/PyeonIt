@@ -106,14 +106,14 @@ function Reports({
   return (
     <div className="space-y-4">
       {message && (
-        <p role="status" className="rounded-lg bg-teal-50 p-3 text-sm">
+        <p role="status" className="rounded-control bg-success/5 text-success p-3 text-sm">
           {message}
         </p>
       )}
       {error && (
         <p
           role="alert"
-          className="rounded-lg bg-red-50 p-3 text-sm text-red-800"
+          className="rounded-control bg-danger/5 p-3 text-sm text-danger"
         >
           {error}
         </p>
@@ -131,7 +131,7 @@ function Reports({
       <ResourceState {...resource} />
       {resource.data && (
         <>
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <div className="overflow-x-auto rounded-card border border-line bg-surface">
             <table className={table}>
               <caption className="p-3 text-left">
                 {statuses[status]} 신고 {resource.data.totalElements}건
@@ -156,7 +156,7 @@ function Reports({
                         ]
                       }{" "}
                       #{report.targetId}
-                      <p className="max-w-48 truncate text-slate-500">
+                      <p className="max-w-48 truncate text-ink-3">
                         {report.target.title ??
                           report.target.excerpt ??
                           report.target.author?.nickname}
@@ -199,7 +199,7 @@ function Reports({
         </>
       )}
       {selected && (
-        <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+        <section className="space-y-4 rounded-card border border-line bg-surface p-5">
           <div className="flex justify-between gap-3">
             <h3 className="font-bold">신고 #{selected.id} 상세</h3>
             <button
@@ -211,22 +211,22 @@ function Reports({
             </button>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-[7rem_1fr]">
-            <dt className="text-slate-500">신고 대상</dt>
+            <dt className="text-ink-3">신고 대상</dt>
             <dd>
               {selected.targetType} #{selected.targetId} ·{" "}
               {selected.target.author?.nickname ?? "탈퇴 회원"} (#
               {selected.target.author?.id ?? "—"})
             </dd>
-            <dt className="text-slate-500">대상 내용</dt>
+            <dt className="text-ink-3">대상 내용</dt>
             <dd className="whitespace-pre-wrap break-words">
               {selected.target.title}{" "}
               {selected.target.excerpt ?? "미리보기 없음"}
             </dd>
-            <dt className="text-slate-500">사유</dt>
+            <dt className="text-ink-3">사유</dt>
             <dd>
               {reasons[selected.reason]} · {selected.detail ?? "추가 설명 없음"}
             </dd>
-            <dt className="text-slate-500">처리 이력</dt>
+            <dt className="text-ink-3">처리 이력</dt>
             <dd>
               {selected.handledBy
                 ? `${selected.handledBy.nickname ?? "관리자"} · ${formatDate(selected.handledAt)}`
@@ -234,7 +234,7 @@ function Reports({
             </dd>
           </dl>
           {selected.status === "PENDING" && (
-            <div className="space-y-3 border-t border-slate-200 pt-4">
+            <div className="space-y-3 border-t border-line pt-4">
               <label className="block text-sm">
                 처리 결과
                 <select
@@ -256,7 +256,7 @@ function Reports({
                   대상 글·댓글 숨기기
                 </label>
               )}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-3">
                 회원 제재는 회원 제재 메뉴에서 별도로 등록합니다.
               </p>
               <button
