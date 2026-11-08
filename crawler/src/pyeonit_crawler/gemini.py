@@ -94,6 +94,9 @@ class GeminiExtractor:
         self.year = 2026
         self.client = client
         self.sleep = sleep
+        # 일일 요청 예산(cli.RequestBudget). 실제 generateContent 전송마다 spend 한다.
+        self.budget = None
+        self.first_pass = False
 
     def extract(self, pdf: bytes) -> dict:
         body = {
@@ -123,11 +126,20 @@ class GeminiExtractor:
             return self._extract_complete(client, body)
 
     def _extract_complete(self, client: httpx.Client, body: dict) -> dict:
+        # 재시도로 회복된 429도 한도 공유 판정 근거라 결과/예외에 붙여 보존한다.
+        events = []
+        try:
+            return self._extract_events(client, body, events)
+        except Exception as exc:
+            exc.quota_events = events
+            raise
+
+    def _extract_events(self, client: httpx.Client, body: dict, events: list) -> dict:
         while True:
-            candidate = self._request(client, body)
+            candidate = self._request(client, body, events)
             if candidate.get("finishReason") == "MAX_TOKENS":
                 limit = body["generationConfig"]["maxOutputTokens"]
-                if limit >= MAX_OUTPUT_TOKENS:
+                if self.first_pass or limit >= MAX_OUTPUT_TOKENS:
                     raise OutputTokenLimitError("MAX_TOKENS")
                 body["generationConfig"]["maxOutputTokens"] = min(
                     limit * 2, MAX_OUTPUT_TOKENS
@@ -136,17 +148,21 @@ class GeminiExtractor:
             if candidate.get("finishReason", "STOP") != "STOP":
                 raise ValueError("Gemini 응답이 정상 완료되지 않았습니다")
             parts = candidate["content"]["parts"]
-            return ExtractionResult(
+            result = ExtractionResult(
                 json.loads(
                     "".join(p.get("text", "") for p in parts if not p.get("thought"))
                 ),
                 candidate.get("modelVersion") or self.model,
             )
+            result.quota_events = events
+            return result
 
-    def _request(self, client: httpx.Client, body: dict) -> dict:
+    def _request(self, client: httpx.Client, body: dict, events=None) -> dict:
         # 최초 요청 + 최대 3회 재시도, 1/2/4초 지수 백오프.
         for attempt in range(4):
             try:
+                if self.budget is not None:
+                    self.budget.spend(self.model)
                 response = client.post(
                     f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent",
                     headers={"x-goog-api-key": self.api_key},
@@ -166,11 +182,22 @@ class GeminiExtractor:
                     if retryable:
                         delay = quota_retry_delay(exc.response, max_delay=None) or delay
                     if exc.response.status_code == 429:
+                        metadata = quota_metadata(exc.response)
+                        if self.budget is not None:
+                            self.budget.record_429(self.model, metadata)
+                            raise
                         server_delay = quota_retry_delay(exc.response)
                         retryable = not quota_exhausted(exc.response)
                         delay = server_delay or delay
-                if not retryable or attempt == 3:
+                if self.first_pass or not retryable or attempt == 3:
                     raise
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and exc.response.status_code == 429
+                    and events is not None
+                ):
+                    # 최종 429는 예외로 cli가 기록한다. 재시도로 넘긴 429만 여기 남긴다.
+                    events.append({"model": self.model, "quota": metadata})
                 self.sleep(delay)
         raise RuntimeError("unreachable")
 
