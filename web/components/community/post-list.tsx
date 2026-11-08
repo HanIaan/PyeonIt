@@ -13,13 +13,43 @@ import {
   Message,
   Tags,
   Pager,
-  authorName,
+  AuthorLink,
   dateLabel,
   input,
   primary,
   handleError,
   useCommunityAuth,
 } from "./shared";
+import SearchForm from "@/components/search/search-form";
+
+export function PostItems({ posts }: { posts: S["PostSummary"][] }) {
+  return (
+    <ul className="divide-y divide-slate-200">
+      {posts.map((p) => (
+        <li key={p.id} className="space-y-3 py-5">
+          <div className="text-xs text-indigo-600">{p.board.name}</div>
+          <Link
+            className="block text-lg font-semibold hover:text-indigo-600"
+            href={`/community/${p.id}`}
+          >
+            {p.title}
+            {p.hasImages && (
+              <span className="ml-2 text-xs text-slate-500">이미지</span>
+            )}
+          </Link>
+          <Tags schools={p.universities} />
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+            <AuthorLink author={p.author} />
+            <time dateTime={p.createdAt}>{dateLabel(p.createdAt)}</time>
+            <span>추천 {p.likeCount}</span>
+            <span>댓글 {p.commentCount}</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function PostList() {
   const query = useSearchParams();
   const router = useRouter();
@@ -77,6 +107,7 @@ export default function PostList() {
   }
   return (
     <Frame title="함께 준비하는 편입">
+      <SearchForm />
       <p className="text-sm text-slate-500">
         궁금한 점부터 작은 성취까지, 함께 나눠요.
       </p>
@@ -147,29 +178,7 @@ export default function PostList() {
           <p className="text-xs text-slate-500">
             총 {data.totalElements}개의 글
           </p>
-          <ul className="divide-y divide-slate-200">
-            {data.content.map((p) => (
-              <li key={p.id} className="space-y-3 py-5">
-                <div className="text-xs text-indigo-600">{p.board.name}</div>
-                <Link
-                  className="block text-lg font-semibold hover:text-indigo-600"
-                  href={`/community/${p.id}`}
-                >
-                  {p.title}
-                  {p.hasImages && (
-                    <span className="ml-2 text-xs text-slate-500">이미지</span>
-                  )}
-                </Link>
-                <Tags schools={p.universities} />
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                  <span>{authorName(p.author)}</span>
-                  <time dateTime={p.createdAt}>{dateLabel(p.createdAt)}</time>
-                  <span>추천 {p.likeCount}</span>
-                  <span>댓글 {p.commentCount}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <PostItems posts={data.content} />
           {!data.content.length && (
             <p className="py-12 text-center text-slate-500">
               조건에 맞는 글이 없습니다.

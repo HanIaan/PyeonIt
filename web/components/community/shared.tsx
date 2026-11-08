@@ -149,3 +149,13 @@ export function Pager({
     </nav>
   );
 }
+
+export function AuthorLink({ author }: { author: S["UserSummary"] | null }) {
+  return author?.nickname != null ? (
+    <Link className="hover:underline" href={`/users/${author.id}`}>
+      {author.nickname}
+    </Link>
+  ) : (
+    <span>탈퇴한 사용자</span>
+  );
+}
