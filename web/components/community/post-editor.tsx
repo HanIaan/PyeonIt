@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { resolveApiUrl } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -240,7 +241,7 @@ export default function PostEditor({ id }: { id?: number }) {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       alt={`첨부 이미지 ${index + 1}`}
-                      src={image.url}
+                      src={resolveApiUrl(image.url)}
                       className="h-28 w-full rounded-lg object-contain"
                     />
                     <button

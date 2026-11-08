@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { resolveApiUrl } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -233,10 +234,10 @@ export default function PostDetail({ id }: { id: number }) {
               {post.body}
             </p>
             {post.images.map((img, i) => (
-              <a key={img.id} href={img.url} target="_blank" rel="noreferrer">
+              <a key={img.id} href={resolveApiUrl(img.url)} target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={img.url}
+                  src={resolveApiUrl(img.url)}
                   alt={`첨부 이미지 ${i + 1}`}
                   className="my-4 max-h-[36rem] w-auto max-w-full rounded-xl"
                 />
