@@ -16,15 +16,21 @@ public class UniversityController {
 
   @GetMapping("/api/universities")
   public List<Map<String, Object>> list(
-      @RequestParam(required = false) String region, Authentication auth) {
+      @RequestParam(required = false) String region,
+      @RequestParam(required = false) String q, Authentication auth) {
     region(region);
+    String pattern = q == null ? null : com.pyeonit.search.SearchQuery.pattern(q, 1);
     Long user = member(auth, false);
     return data
         .rows(
-            "select id from universities where (?::text is null or region=?) order by"
-                + " name,campus,id",
-            region,
-            region)
+            """
+            select id from universities u where (?::text is null or region=?)
+            and (?::text is null or u.name ilike ? escape E'\\\\'
+              or exists(select 1 from university_aliases a where a.university_id=u.id
+                and a.alias ilike ? escape E'\\\\'))
+            order by name,campus,id
+            """,
+            region, region, pattern, pattern, pattern)
         .stream()
         .map(r -> data.university(((Number) r.get("id")).longValue(), user))
         .toList();
