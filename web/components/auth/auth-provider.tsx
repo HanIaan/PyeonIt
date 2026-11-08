@@ -85,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("focus", onFocus);
   }, [refresh]);
   const logout = async () => {
+    await import("@/lib/push").then((push) => push.unsubscribePushBeforeLogout()).catch(() => console.warn("푸시 구독 정리에 실패했습니다. 로그아웃은 계속합니다."));
     await logoutApi();
     setMe(null);
     setState("anonymous");

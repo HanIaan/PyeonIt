@@ -77,6 +77,7 @@ function Profile() {
           </div>
         )}
       </section>
+      <a href="/me/notifications" onClick={(event) => { event.preventDefault(); router.push("/me/notifications"); }} className="block text-sm underline underline-offset-4">알림 설정</a>
       <QueryMessage />
       <Message>{error}</Message>
       {notice && (
