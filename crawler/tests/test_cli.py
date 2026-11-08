@@ -675,13 +675,13 @@ def test_quota_wait_all_models_and_remaining_school_exit_zero(monkeypatch, pipel
 
     monkeypatch.setattr(cli, "GeminiExtractor", factory)
     assert asyncio.run(cli.backfill(args)) == 0
-    assert calls == MODEL_CHAIN
+    assert calls == MODEL_CHAIN[:1]
     summary = json.loads((args.output / "summary.json").read_text())
     assert {r["status"] for r in summary.values()} == {"QUOTA_WAIT"}
-    saved = json.loads((args.output / "skku-2026.json").read_text())
+    saved = json.loads((args.output / "sogang-2026.json").read_text())
     assert not saved["adopted"] and saved["data"] is None
-    assert len(saved["model_attempts"]) == 4
-    assert all(a["skipped"] for a in saved["model_attempts"])
+    assert len(saved["model_attempts"]) == 1
+    assert not (args.output / "skku-2026.json").exists()
     quotas = json.loads((args.output / "model_quotas.json").read_text())
     assert quotas[MODEL_CHAIN[0]][0]["quotaValue"] == "20"
 

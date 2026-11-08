@@ -90,7 +90,7 @@ def test_classification_stages_and_order(tmp_path, schools, capsys):
         out, "yonsei", schools["yonsei"], status="passed", model="gemini-3.6-flash"
     )
     assert cli.classify(args, "yonsei", schools["yonsei"], models)[0] == 2
-    assert cli.classify(args, "yonsei", schools["yonsei"], cli.MODEL_CHAIN)[0] == "skip"
+    assert cli.classify(args, "yonsei", schools["yonsei"], cli.MODEL_CHAIN)[0] == 2
 
     dry = SimpleNamespace(
         output=out,
@@ -112,9 +112,9 @@ def test_classification_stages_and_order(tmp_path, schools, capsys):
     ]
     assert rows == [
         "서강대학교",
-        "연세대학교 (서울)",  # 기본 체인에서는 3.6 통과도 건너뜀
         "가천대학교",
         "성균관대학교",
+        "연세대학교 (서울)",  # 3.8 통과만 건너뜀
         "경희대학교",
     ]
     plan = printed.split("오늘 처리 예정")[1]
@@ -319,83 +319,70 @@ def quota_response(quota_id, delay):
     )
 
 
-def test_every_429_is_counted_and_recorded(tmp_path):
-    responses = [
-        quota_response("GenerateRequestsPerMinute", "2s"),
-        httpx.Response(
-            200,
-            json={
-                "candidates": [
-                    {"content": {"parts": [{"text": json.dumps(extraction())}]}}
-                ]
-            },
-        ),
-        quota_response("GenerateRequestsPerDayPerProjectPerModel-FreeTier", "54000s"),
-    ]
-    with httpx.Client(
-        transport=httpx.MockTransport(lambda _: responses.pop(0))
-    ) as client:
-        budget = cli.RequestBudget(tmp_path / "q.json", 20)
-        extractors = {}
-        for model in ("gemini-3.8-flash", "gemini-3.7-flash"):
-            extractors[model] = GeminiExtractor(
-                "fake", model, client=client, sleep=lambda _: None
-            )
-            extractors[model].budget = budget
-        first = asyncio.run(
-            cli.extract_with_models(
-                extractors,
-                b"%PDF",
-                "서강대학교",
-                2026,
-                {},
-                tries=1,
-                chain_on_fail=False,
-            )
-        )
-        responses[:] = [
-            quota_response(
-                "GenerateRequestsPerDayPerProjectPerModel-FreeTier", "54000s"
-            ),
-            httpx.Response(
-                200,
-                json={
-                    "candidates": [
-                        {"content": {"parts": [{"text": json.dumps(extraction())}]}}
-                    ]
-                },
-            ),
-        ]
-        second = asyncio.run(
-            cli.extract_with_models(
-                extractors,
-                b"%PDF",
-                "서강대학교",
-                2026,
-                {},
-                tries=1,
-                chain_on_fail=False,
-            )
-        )
-    assert budget.state["used"] == 4
-    retried = first["model_attempts"][0]["extraction_attempts"][0]["retried_429"]
-    assert retried[0]["quota"][0]["quotaId"] == "GenerateRequestsPerMinute"
-    moved = second["model_attempts"]
-    assert (
-        moved[0]["http_status"] == 429
-        and moved[0]["quota"][1]["retryDelay"] == "54000s"
-    )
-    assert (
-        moved[1]["requested_model"] == "gemini-3.7-flash"
-        and moved[1]["http_status"] == 200
-    )
-    assert budget.state["last_429"]["model"] == "gemini-3.8-flash"
+@pytest.mark.parametrize(
+    "quota_id,delay",
+    [
+        ("GenerateRequestsPerMinute", "2s"),
+        ("GenerateRequestsPerDayPerProjectPerModel-FreeTier", "54000s"),
+    ],
+)
+def test_every_429_stops_day_without_retry_or_chain(tmp_path, quota_id, delay):
+    requests = []
 
-    (tmp_path / "a-2026.json").write_text(
-        json.dumps({"model_attempts": first["model_attempts"]})
-    )
-    (tmp_path / "b-2026.json").write_text(json.dumps({"model_attempts": moved}))
-    rows = cli.quota_evidence(tmp_path)
-    assert rows["gemini-3.8-flash"]["429"] == 2 and rows["gemini-3.8-flash"]["200"] == 1
-    assert rows["gemini-3.7-flash"]["after"] == {"gemini-3.8-flash 429 후 200": 1}
-    assert "gemini-3.8-flash 429 후 200×1" in cli.quota_report(tmp_path)
+    def respond(request):
+        requests.append(request)
+        return quota_response(quota_id, delay)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        budget = cli.RequestBudget(tmp_path / "q.json", 20)
+        extractors = {
+            m: GeminiExtractor(
+                "fake",
+                m,
+                client=client,
+                sleep=lambda _: pytest.fail("429 sleep forbidden"),
+            )
+            for m in ("gemini-3.8-flash", "gemini-3.7-flash")
+        }
+        for extractor in extractors.values():
+            extractor.budget = budget
+        result = asyncio.run(
+            cli.extract_with_models(
+                extractors,
+                b"%PDF",
+                "서강대학교",
+                2026,
+                {},
+                tries=1,
+                chain_on_fail=False,
+            )
+        )
+        assert result["status"] == "QUOTA_WAIT"
+        assert len(result["model_attempts"]) == 1
+        assert len(requests) == budget.state["used"] == 1
+        resumed = cli.RequestBudget(tmp_path / "q.json", 20)
+        assert resumed.remaining() == 0
+        with pytest.raises(cli.BudgetExhausted):
+            resumed.spend("gemini-3.7-flash")
+    assert budget.state["last_429"]["quota"][1]["retryDelay"] == delay
+
+
+@pytest.mark.parametrize("status", [503, 200])
+def test_first_pass_sends_only_one_request_even_on_retryable_or_truncated_response(
+    tmp_path, status
+):
+    requests = []
+
+    def respond(request):
+        requests.append(request)
+        return httpx.Response(
+            status, json={"candidates": [{"finishReason": "MAX_TOKENS"}]}
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        extractor = GeminiExtractor("fake", client=client)
+        extractor.budget = cli.RequestBudget(tmp_path / "q.json", 20)
+        extractor.first_pass = True
+        with pytest.raises((httpx.HTTPStatusError, ValueError)):
+            extractor.extract(b"%PDF")
+    assert len(requests) == 1

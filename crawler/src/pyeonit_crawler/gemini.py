@@ -96,6 +96,7 @@ class GeminiExtractor:
         self.sleep = sleep
         # 일일 요청 예산(cli.RequestBudget). 실제 generateContent 전송마다 spend 한다.
         self.budget = None
+        self.first_pass = False
 
     def extract(self, pdf: bytes) -> dict:
         body = {
@@ -138,7 +139,7 @@ class GeminiExtractor:
             candidate = self._request(client, body, events)
             if candidate.get("finishReason") == "MAX_TOKENS":
                 limit = body["generationConfig"]["maxOutputTokens"]
-                if limit >= MAX_OUTPUT_TOKENS:
+                if self.first_pass or limit >= MAX_OUTPUT_TOKENS:
                     raise OutputTokenLimitError("MAX_TOKENS")
                 body["generationConfig"]["maxOutputTokens"] = min(
                     limit * 2, MAX_OUTPUT_TOKENS
@@ -184,10 +185,11 @@ class GeminiExtractor:
                         metadata = quota_metadata(exc.response)
                         if self.budget is not None:
                             self.budget.record_429(self.model, metadata)
+                            raise
                         server_delay = quota_retry_delay(exc.response)
                         retryable = not quota_exhausted(exc.response)
                         delay = server_delay or delay
-                if not retryable or attempt == 3:
+                if self.first_pass or not retryable or attempt == 3:
                     raise
                 if (
                     isinstance(exc, httpx.HTTPStatusError)

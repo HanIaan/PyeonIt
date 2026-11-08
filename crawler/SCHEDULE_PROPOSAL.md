@@ -6,7 +6,7 @@
 
 `crawler/scripts/daily-backfill.sh` 하나를 하루 한 번 실행한다.
 
-- `pyeonit-crawler backfill --year 2026 --output artifacts/t6-chain`을 실행한다. 통과한 학교는 건너뛰고 ① → ② → ③ 순서로 처리한다. 하루 요청 예산(기본 20)을 넘지 않는다.
+- `pyeonit-crawler backfill --year 2026 --output artifacts/t6-chain --daily-request-limit 20 --model-chain gemini-3.8-flash --env-file .env`을 실행한다. 통과한 학교는 건너뛰고 ① → ② → ③ 순서로 처리한다. 하루 요청 예산(기본 20)을 넘지 않는다.
 - 예산은 `crawler/artifacts/quota-state.json`에 태평양시 날짜별로 누적된다. 같은 날 여러 번 실행돼도(잠자기에서 깨어난 뒤 다시 실행되는 경우 등) 합계가 20을 넘지 않는다. 예산이 바닥나면 남은 학교는 `QUOTA_WAIT`이고 종료 코드는 0이다.
 - 이어서 `backfill --next-run`으로 다음 권장 실행 시각을 로그에 남긴다.
 - 추가 인자는 그대로 전달된다. 예: `daily-backfill.sh --model-chain gemini-3.8-flash`.
@@ -26,7 +26,7 @@ KST에는 서머타임이 없다. 그래서 **매일 17:10 KST** 한 번이면 �
 
 ```sh
 REPO=/Users/iaan/.superset/worktrees/PyeonIt/feat/crawler   # 실제 저장소 경로로 바꾼다
-chmod 600 "$REPO/.env"                                      # GEMINI_API_KEY(무료 키)만 둔다
+chmod 600 "$REPO/crawler/.env"                                      # GEMINI_API_KEY(무료 키)만 둔다
 "$REPO/crawler/scripts/daily-backfill.sh" --dry-run         # 수동 1회 점검(Gemini 호출 0)
 ```
 
@@ -98,6 +98,6 @@ rm ~/Library/LaunchAgents/com.pyeonit.daily-backfill.plist
 
 ## 비밀 값(.env)
 
-- API 키는 plist·crontab·스크립트 인자·환경변수에 **넣지 않는다**. `pyeonit-crawler`가 워크스페이스 루트(`.git`이 있는 폴더)의 `.env`에서 `GEMINI_API_KEY`를 읽는다. launchd와 cron은 셸 프로필을 읽지 않으므로 이 방식이 가장 단순하다.
+- API 키는 plist·crontab·스크립트 인자·환경변수에 **넣지 않는다**. `pyeonit-crawler`가 `crawler/.env`에서 `GEMINI_API_KEY`를 읽는다. launchd와 cron은 셸 프로필을 읽지 않으므로 이 방식이 가장 단순하다.
 - `.env`는 `chmod 600`, gitignore 대상이며 **무료 키만** 둔다. 유료 키를 넣지 않는다.
 - 로그·JSON에는 키, 인증 헤더, 오류 본문이 남지 않는다. 429에서는 허용된 쿼터 필드만 저장한다.

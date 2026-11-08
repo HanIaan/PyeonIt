@@ -170,21 +170,32 @@ class RequestBudget:
     def remaining(self) -> int:
         with self.lock:
             self._roll()
-            left = max(self.limit - self.state["used"], 0)
+            left = (
+                0
+                if self.state.get("blocked_day") == self.state["day"]
+                else max(self.limit - self.state["used"], 0)
+            )
             self.exhausted |= left == 0
             return left
 
     def spend(self, model: str) -> None:
         with self.lock:
             self._roll()
-            if self.state["used"] >= self.limit:
+            if (
+                self.state["used"] >= self.limit
+                or self.state.get("blocked_day") == self.state["day"]
+            ):
                 self.exhausted = True
                 raise BudgetExhausted("DAILY_BUDGET")
             self.state["used"] += 1
+            self.state.setdefault("days", {})[self.state["day"]] = self.state["used"]
             self._save()
 
     def record_429(self, model: str, quota: list[dict]) -> None:
         with self.lock:
+            self._roll()
+            self.state["blocked_day"] = self.state["day"]
+            self.exhausted = True
             at = self.now()
             entry = {"at": at.isoformat(), "model": model, "quota": quota}
             delay = retry_delay_seconds(quota)
@@ -216,9 +227,14 @@ def next_run_at(state: dict, margin: timedelta = timedelta(minutes=5)):
     """마지막 429의 retryDelay(없으면 저장된 리셋 시각) + 여유 5분. 429 기록 없으면 None."""
     last = state.get("last_429")
     if not last:
-        return None
-    target = last.get("retry_at") or state.get("reset_at")
-    return datetime.fromisoformat(target) + margin if target else None
+        target = state.get("reset_at")
+        return datetime.fromisoformat(target) + margin if target else None
+    targets = [
+        datetime.fromisoformat(value)
+        for value in (last.get("retry_at"), state.get("reset_at"))
+        if value
+    ]
+    return max(targets) + margin if targets else None
 
 
 def matches_request(data: dict, school: str, year: int) -> bool:
@@ -297,7 +313,7 @@ async def extract_validated(
 
 def reusable_result(args, slug: str, entry: dict, models=None) -> dict | None:
     """같은 PDF의 통과 결과만 자동 재사용한다. lite 결과는 항상 재추출한다."""
-    models = models or MODEL_CHAIN
+    models = ["gemini-3.8-flash"]
     try:
         result = json.loads((args.output / f"{slug}-{args.year}.json").read_text())
         source = result["source"]
@@ -468,6 +484,16 @@ async def extract_with_models(
                     exhausted[model] = quota_metadata(exc.response)
                     trial.update(status="QUOTA_WAIT", quota=exhausted[model])
                     model_attempts.append(trial)
+                    if getattr(extractor, "budget", None) is not None:
+                        if not extractor.budget.exhausted:
+                            extractor.budget.record_429(model, exhausted[model])
+                        return {
+                            "status": "QUOTA_WAIT",
+                            "adopted": False,
+                            "model_attempts": model_attempts,
+                            "model": model,
+                            "requested_model": model,
+                        }
                     continue
             if isinstance(exc, WrongDocumentError):
                 trial["model"] = getattr(exc.data, "model_version", model)
@@ -538,7 +564,7 @@ def lite_passed(args, slug: str, sha256: str | None) -> bool:
 def classify(args, slug: str, entry: dict, models: list[str]) -> tuple:
     """(단계, 사유). 단계는 'skip' 또는 1·2·3. 근거가 불분명하면 보수적으로 ①."""
     if reusable_result(args, slug, entry, models) is not None:
-        return "skip", "같은 PDF의 체인 모델 통과 결과"
+        return "skip", "같은 PDF의 gemini-3.8-flash 통과 결과"
     try:
         result = json.loads((args.output / f"{slug}-{args.year}.json").read_text())
         source = result["source"]
@@ -548,6 +574,8 @@ def classify(args, slug: str, entry: dict, models: list[str]) -> tuple:
         return 1, "이전 결과 없음 또는 판독 불가(보수적으로 ①)"
     if source.get("page_url") != first_source(entry):
         return 1, "출처 교체: PDF 재다운로드 후 추출"
+    if validation.get("passed") and "lite" in source.get("model", "").lower():
+        return 3, "현재 PDF의 lite 모델만 통과"
     if (
         isinstance(data, dict)
         and data.get("모집인원")
@@ -681,7 +709,7 @@ def print_next_run(path: Path) -> None:
     if at is None:
         print("다음 실행 권장 시각: 기록 없음 (quota-state에 429 기록이 없습니다)")
         return
-    last = state["last_429"]
+    last = state.get("last_429") or {"model": "예산", "at": "일일 상한"}
     print(
         f"다음 실행 권장 시각: {at.astimezone(KST):%Y-%m-%d %H:%M} KST / "
         f"{at.astimezone(UTC):%Y-%m-%d %H:%M} UTC "
@@ -748,6 +776,7 @@ async def backfill(args: argparse.Namespace) -> int:
     for extractor in extractors.values():
         extractor.year = args.year
         extractor.budget = budget
+        extractor.first_pass = True
     exhausted = {}
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
@@ -804,7 +833,9 @@ async def backfill(args: argparse.Namespace) -> int:
         browser = await pw.chromium.launch()
         try:
             context = await browser.new_context()
-            semaphore = asyncio.Semaphore(getattr(args, "concurrency", 3))
+            semaphore = asyncio.Semaphore(
+                1
+            )  # 429 이후 새 요청이 나가지 않도록 순차 실행
 
             async def collect(slug):
                 entry = schools[slug]
@@ -996,6 +1027,8 @@ async def backfill(args: argparse.Namespace) -> int:
                 if budget.remaining() == 0:
                     record["retry"] = "DAILY_BUDGET"
                     return
+                for extractor in extractors.values():
+                    extractor.first_pass = False
                 start = models.index(first["requested_model"])
                 second = await extract_with_models(
                     {m: extractors[m] for m in models[start:]},
@@ -1093,7 +1126,18 @@ def main() -> None:
         action="store_true",
         help="호환 옵션: 같은 PDF의 통과 결과는 항상 자동 재사용",
     )
+    load_command = sub.add_parser("load", help="채택·합계 검증 통과 결과만 DB 적재")
+    load_command.add_argument("--input", type=Path, default=ARTIFACTS / "t6-chain")
+    load_command.add_argument("--universities", type=Path, default=DEFAULT_UNIVERSITIES)
+    load_command.add_argument("--storage-dir", type=Path, default=ARTIFACTS / "pdfs")
+    load_command.add_argument(
+        "--database-url", default=None, help="기본 DATABASE_URL 환경변수"
+    )
     args = parser.parse_args()
+    if args.command == "load":
+        from .load import run_load
+
+        raise SystemExit(run_load(args))
     if args.concurrency < 1:
         parser.error("--concurrency는 1 이상이어야 합니다")
     if args.daily_request_limit < 0:
