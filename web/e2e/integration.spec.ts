@@ -150,7 +150,7 @@ test('Q1-4 커뮤니티 → 신고 → 관리자 처리·정지 → 탈퇴', asy
       await page.getByLabel('본문', { exact: true }).fill(`Q1 자동 검증 ${unique()}`);
       for (const school of schools) await page.getByRole('checkbox', { name: school.name, exact: false }).check();
       const imagePath = testInfo.outputPath('q1.png');
-      await writeFile(imagePath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1sAAAAASUVORK5CYII=', 'base64'));
+      await writeFile(imagePath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64'));
       await page.locator('input[type=file]').setInputFiles(imagePath);
       const preview = page.getByRole('img', { name: '첨부 이미지 1', exact: true });
       await expect(preview).toBeVisible();
