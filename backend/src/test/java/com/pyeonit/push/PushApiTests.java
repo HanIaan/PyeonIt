@@ -58,10 +58,14 @@ class PushApiTests {
 
     @Test
     void endpointUpsertTransferAndOwnerOnlyIdempotentDeletion() throws Exception {
+        int registration = 0;
         for (long owner : new long[]{first, first, second}) {
             db.update("UPDATE push_subscriptions SET created_at='2020-01-01T00:00:00Z' WHERE endpoint=?", ENDPOINT);
             mvc.perform(put("/api/me/push-subscriptions").with(user("" + owner)).with(csrf())
                     .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isNoContent());
+            if (++registration == 2) {
+                assertThat(db.queryForObject("SELECT created_at = '2020-01-01T00:00:00Z' FROM push_subscriptions", Boolean.class)).isTrue();
+            }
         }
         assertThat(db.queryForObject("SELECT count(*) FROM push_subscriptions", Integer.class)).isEqualTo(1);
         assertThat(db.queryForObject("SELECT user_id FROM push_subscriptions", Long.class)).isEqualTo(second);
@@ -88,7 +92,7 @@ class PushApiTests {
         db.update("UPDATE push_subscriptions SET created_at='2020-01-01T00:00:00Z' WHERE endpoint=?", ENDPOINT + "transfer");
         register(first, ENDPOINT + "transfer");
         assertThat(db.queryForList("SELECT endpoint FROM push_subscriptions WHERE user_id=?", String.class, first))
-                .containsExactlyInAnyOrder(ENDPOINT + 2, ENDPOINT + 4, ENDPOINT + "transfer");
+                .containsExactlyInAnyOrder(ENDPOINT + 3, ENDPOINT + 4, ENDPOINT + "transfer");
         assertThat(db.queryForObject("SELECT count(*) FROM push_subscriptions WHERE user_id=?", Integer.class, second)).isZero();
     }
 
