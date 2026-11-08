@@ -3,6 +3,8 @@
 import hashlib
 import json
 import os
+from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 import psycopg
@@ -12,14 +14,40 @@ from psycopg.types.json import Jsonb
 from .monitor.seed import load_seed
 
 
+def corrected_result(data: dict, digest: str, corrections: dict) -> dict:
+    """원문 PDF 대조 후 명시한 날짜 보정만 적용하고 수정 전 값을 이력으로 남긴다."""
+    result = deepcopy(data)
+    evidence = corrections.get(digest, [])
+    for correction in evidence:
+        field = correction["field"]
+        if field not in {"시작", "종료"} or not correction.get("pdf_page"):
+            raise ValueError("날짜 필드·PDF 근거 페이지 필요")
+        row = result["일정"][correction["index"]]
+        if row["항목"] != correction["label"] or row[field] != correction["before"]:
+            raise ValueError("보정 대상 원문 불일치")
+        value = correction["after"]
+        fmt = "%Y-%m-%d" if len(value) == 10 else "%Y-%m-%d %H:%M"
+        if datetime.strptime(value, fmt).strftime(fmt) != value:
+            raise ValueError("보정 날짜 형식 오류")
+        row[field] = value
+    if evidence:
+        result["_schedule_corrections"] = {"pdf_sha256": digest, "changes": evidence}
+    return result
+
+
 def load_artifacts(
-    conn, directory: Path, storage_dir: Path, universities: Path
+    conn,
+    directory: Path,
+    storage_dir: Path,
+    universities: Path,
+    corrections_path: Path | None = None,
 ) -> dict:
     from .cli import load_universities, matches_request
     from .validation import validate_totals
 
     schools = load_universities(universities)
-    report = {"loaded": 0, "skipped": 0, "documents": [], "reasons": []}
+    corrections = json.loads(corrections_path.read_text()) if corrections_path else {}
+    report = {"loaded": 0, "updated": 0, "skipped": 0, "documents": [], "reasons": []}
     for path in sorted(directory.glob("*-2026.json")):
         reason = None
         try:
@@ -70,6 +98,14 @@ def load_artifacts(
             report["skipped"] += 1
             report["reasons"].append({"file": path.name, "reason": reason})
             continue
+        try:
+            prepared = corrected_result(data, digest, corrections)
+        except (ValueError, KeyError, TypeError, IndexError):
+            report["skipped"] += 1
+            report["reasons"].append(
+                {"file": path.name, "reason": "CORRECTION_MISMATCH"}
+            )
+            continue
         with conn.transaction():
             university = conn.execute(
                 "SELECT id FROM universities WHERE name=%s AND campus=%s",
@@ -105,6 +141,36 @@ def load_artifacts(
                     storage_key,
                 ),
             ).fetchone()
+            if document is None and prepared != data:
+                existing = conn.execute(
+                    "SELECT id, status FROM admission_documents WHERE file_sha256=%s FOR UPDATE",
+                    (digest,),
+                ).fetchone()
+                run = conn.execute(
+                    "SELECT * FROM extraction_runs WHERE document_id=%s ORDER BY id DESC LIMIT 1 FOR UPDATE",
+                    (existing["id"],),
+                ).fetchone()
+                if (
+                    existing["status"] == "EXTRACTED"
+                    and run is not None
+                    and run["result"] == data
+                    and run["validation"] == validation
+                    and run["model"] == source["model"]
+                ):
+                    conn.execute(
+                        "UPDATE extraction_runs SET result=%s WHERE id=%s",
+                        (Jsonb(prepared), run["id"]),
+                    )
+                    report["updated"] += 1
+                    report["documents"].append(
+                        {
+                            "id": existing["id"],
+                            "school": entry["name"],
+                            "sha256": digest,
+                            "updated": True,
+                        }
+                    )
+                    continue
             if document is None:
                 report["skipped"] += 1
                 report["reasons"].append(
@@ -114,7 +180,7 @@ def load_artifacts(
             conn.execute(
                 """INSERT INTO extraction_runs (document_id, model, result, validation)
                    VALUES (%s, %s, %s, %s)""",
-                (document["id"], source["model"], Jsonb(data), Jsonb(validation)),
+                (document["id"], source["model"], Jsonb(prepared), Jsonb(validation)),
             )
             report["loaded"] += 1
             report["documents"].append(
@@ -131,7 +197,11 @@ def run_load(args) -> int:
     try:
         with psycopg.connect(url, autocommit=True, row_factory=dict_row) as conn:
             report = load_artifacts(
-                conn, args.input, args.storage_dir, args.universities
+                conn,
+                args.input,
+                args.storage_dir,
+                args.universities,
+                args.schedule_corrections,
             )
     except psycopg.Error:
         print("DB 적재 실패: 연결·스키마·제약 조건을 확인하세요")

@@ -1,4 +1,4 @@
-"""초기 수집 CLI. DB에 쓰지 않고 PDF 및 JSON을 저장한다."""
+"""모집요강 backfill 및 채택·검증 통과 결과 DB 적재 CLI."""
 
 import argparse
 import asyncio
@@ -224,7 +224,7 @@ class RequestBudget:
 
 
 def next_run_at(state: dict, margin: timedelta = timedelta(minutes=5)):
-    """마지막 429의 retryDelay(없으면 저장된 리셋 시각) + 여유 5분. 429 기록 없으면 None."""
+    """당일 중단 규칙에 따라 retryDelay와 날짜 리셋 중 늦은 시각 + 여유 5분."""
     last = state.get("last_429")
     if not last:
         target = state.get("reset_at")
@@ -826,8 +826,13 @@ async def backfill(args: argparse.Namespace) -> int:
 
     def budget_wait(record, school):
         # 예산 소진: 기존 JSON(진단 데이터 포함)은 덮어쓰지 않는다.
-        record.update(status="QUOTA_WAIT", reason="DAILY_BUDGET")
-        print(f"{school}: QUOTA_WAIT (오늘 요청 예산 소진)", flush=True)
+        reason = (
+            "HTTP_429"
+            if budget.state.get("blocked_day") == budget.state["day"]
+            else "DAILY_BUDGET"
+        )
+        record.update(status="QUOTA_WAIT", reason=reason)
+        print(f"{school}: QUOTA_WAIT ({reason})", flush=True)
 
     async with async_playwright() as pw:
         browser = await pw.chromium.launch()
@@ -1132,6 +1137,11 @@ def main() -> None:
     load_command.add_argument("--storage-dir", type=Path, default=ARTIFACTS / "pdfs")
     load_command.add_argument(
         "--database-url", default=None, help="기본 DATABASE_URL 환경변수"
+    )
+    load_command.add_argument(
+        "--schedule-corrections",
+        type=Path,
+        help="PDF 해시·원문·페이지 근거가 있는 명시적 날짜 보정 JSON",
     )
     args = parser.parse_args()
     if args.command == "load":

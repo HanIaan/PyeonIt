@@ -114,3 +114,85 @@ def test_document_and_run_roll_back_together(conn, tmp_path):
     assert (
         conn.execute("SELECT count(*) n FROM admission_documents").fetchone()["n"] == 0
     )
+
+
+def test_explicit_pdf_date_correction_preserves_raw_and_updates_only_unreviewed_run(
+    conn, tmp_path
+):
+    path, result = artifact(tmp_path)
+    raw = "2025-12-09 18:00 explanatory suffix"
+    result["data"]["일정"] = [
+        {"항목": "원서접수", "시작": "2025-12-05 10:00", "종료": raw}
+    ]
+    path.write_text(json.dumps(result))
+    storage = tmp_path / "store"
+    initial = load_artifacts(conn, tmp_path, storage, DEFAULT_UNIVERSITIES)
+    digest = result["source"]["sha256"]
+    changes = [
+        {
+            "index": 0,
+            "label": "원서접수",
+            "field": "종료",
+            "before": raw,
+            "after": "2025-12-09 18:00",
+            "pdf_page": 3,
+        }
+    ]
+    corrections = tmp_path / "corrections.json"
+    corrections.write_text(json.dumps({digest: changes}))
+    repaired = load_artifacts(
+        conn, tmp_path, storage, DEFAULT_UNIVERSITIES, corrections
+    )
+    assert repaired["updated"] == 1 and repaired["loaded"] == 0
+    assert repaired["documents"][0]["id"] == initial["documents"][0]["id"]
+    run = conn.execute("SELECT * FROM extraction_runs").fetchone()
+    assert run["result"]["일정"][0]["종료"] == "2025-12-09 18:00"
+    assert run["result"]["_schedule_corrections"]["changes"][0]["before"] == raw
+    assert (
+        run["model"] == result["source"]["model"]
+        and run["validation"] == result["validation"]
+    )
+    again = load_artifacts(conn, tmp_path, storage, DEFAULT_UNIVERSITIES, corrections)
+    assert again["updated"] == again["loaded"] == 0
+    assert conn.execute("SELECT count(*) n FROM extraction_runs").fetchone()["n"] == 1
+    conn.execute("UPDATE admission_documents SET status='APPROVED'")
+    conn.execute(
+        "UPDATE extraction_runs SET result=%s",
+        (psycopg.types.json.Jsonb(result["data"]),),
+    )
+    reviewed = load_artifacts(
+        conn, tmp_path, storage, DEFAULT_UNIVERSITIES, corrections
+    )
+    assert reviewed["updated"] == 0
+    assert (
+        conn.execute("SELECT result FROM extraction_runs").fetchone()["result"]
+        == result["data"]
+    )
+
+
+def test_correction_requires_exact_source_text(conn, tmp_path):
+    _, result = artifact(tmp_path)
+    corrections = tmp_path / "corrections.json"
+    corrections.write_text(
+        json.dumps(
+            {
+                result["source"]["sha256"]: [
+                    {
+                        "index": 0,
+                        "label": "원서접수",
+                        "field": "종료",
+                        "before": "wrong",
+                        "after": "2025-12-09 18:00",
+                        "pdf_page": 3,
+                    }
+                ]
+            }
+        )
+    )
+    report = load_artifacts(
+        conn, tmp_path, tmp_path / "store", DEFAULT_UNIVERSITIES, corrections
+    )
+    assert (
+        report["loaded"] == 0
+        and report["reasons"][0]["reason"] == "CORRECTION_MISMATCH"
+    )

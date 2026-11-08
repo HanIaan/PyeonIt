@@ -1,0 +1,35 @@
+{
+  "6ab6c93deeff21181b138cdab36ce13d0cb365fb8c4dc617b66bdc02b3abc364": [
+    {
+      "index": 0,
+      "label": "원서접수",
+      "field": "종료",
+      "before": "2025-12-04 18:00 (목) 18:00 까지 접수 마감시간 포함 여부 표기 무관 단 ISO 포맷 준수시 2025-12-04 18:00로 변환 가능하므로 아래 비고 참조 대체/통합 가능) -> 아래에 2025-12-04 18:00 직접 기록",
+      "after": "2025-12-04 18:00",
+      "pdf_page": 5,
+      "evidence": "원서접수 일정표를 PDF 렌더링 및 텍스트로 대조(2026-11-08). 날짜 변경 없이 설명 접미문만 제거."
+    }
+  ],
+  "bc91566de7d2c06c4e10dd9207721e7c2b67ca414df1559755d4d474790364ed": [
+    {
+      "index": 0,
+      "label": "원서접수",
+      "field": "종료",
+      "before": "2025-12-09 18:00 Whittled down by context rules to standard date format or OCR text pattern if standard unavailable. ISO datetime standard format preferred when exact time provided: 2025-12-05 10:00 to 2025-12-09 18:00 format, clean representation without extra symbols -> 2025-12-09 18:00.",
+      "after": "2025-12-09 18:00",
+      "pdf_page": 3,
+      "evidence": "원서접수 일정표를 PDF 렌더링 및 텍스트로 대조(2026-11-08). 날짜 변경 없이 설명 접미문만 제거."
+    }
+  ],
+  "c8de0a782a1109e9af89d28d780ba485507cb8b4a4032ae692b3c3961bc8836e": [
+    {
+      "index": 0,
+      "label": "원서접수",
+      "field": "종료",
+      "before": "2026-02-18 11:00 risk free format string: 2026-02-18 11:00시까지 -> 2026-02-18 11:00대신 단순 표준포맷 적용 2026-02-18 11:00 사용 가능. 2026-02-18 11:00 원래 요구사항과 동일한 YYYY-MM-DD HH:MM 형식 적용. 시작일: 2026-02-10, 종료일: 2026-02-18 11:00 적용 가능. 2026-02-10 -> 2026-02-10. 종료: 2026-02-18 11:00 바로 표기 가능함. standardizing standard strings below.",
+      "after": "2026-02-18 11:00",
+      "pdf_page": 4,
+      "evidence": "원서접수 일정표를 PDF 렌더링 및 텍스트로 대조(2026-11-08). 날짜 변경 없이 설명 접미문만 제거."
+    }
+  ]
+}
