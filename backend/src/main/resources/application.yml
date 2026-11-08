@@ -12,6 +12,10 @@ spring:
       ddl-auto: validate
     open-in-view: false
 pyeonit:
+  community:
+    orphan-image-retention: ${PYEONIT_COMMUNITY_ORPHAN_IMAGE_RETENTION:24h}
+    orphan-image-cleanup-interval: ${PYEONIT_COMMUNITY_ORPHAN_IMAGE_CLEANUP_INTERVAL:1h}
+    orphan-image-cleanup-enabled: ${PYEONIT_COMMUNITY_ORPHAN_IMAGE_CLEANUP_ENABLED:true}
   push:
     max-individual-notices: ${PYEONIT_PUSH_MAX_INDIVIDUAL_NOTICES:3}
     allowed-endpoint-host-suffixes: ${PYEONIT_PUSH_ALLOWED_ENDPOINT_HOST_SUFFIXES:fcm.googleapis.com,updates.push.services.mozilla.com,push.services.mozilla.com,notify.windows.com,push.apple.com}
