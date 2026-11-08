@@ -27,6 +27,16 @@
 | `PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_CLEANUP_CRON` | 선택 | 기본 `0 0 4 * * *`; UTC 매일 04:00, `-`이면 예약 비활성화 |
 | `PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_RETENTION_DAYS` | 선택 | 기본 `365`일, 양수; 탈퇴 시각이 현재−보관기간보다 이전인 회원만 대상 |
 | `PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_CLEANUP_BATCH_SIZE` | 선택 | 기본 `500`, 양수; 주기당 신고·제재 합계 행 상한, 신고 먼저 처리하고 잔여는 다음 주기 |
+| `PYEONIT_COMMUNITY_RETENTION_CLEANUP_ENABLED` | 선택 | 기본 `true`; 본문·삭제 글 이미지 정리 활성화 |
+| `PYEONIT_COMMUNITY_RETENTION_CLEANUP_CRON` | 선택 | 기본 `0 0 3 * * *`; UTC 매일 03:00; -이면 예약 비활성화 |
+| `PYEONIT_COMMUNITY_DELETED_BODY_RETENTION_DAYS` | 선택 | 기본 `30`; 삭제 글·댓글 본문 보관일, 양수 |
+| `PYEONIT_COMMUNITY_DELETED_IMAGE_RETENTION_DAYS` | 선택 | 기본 `30`; 삭제 글 연결 이미지 보관일, 양수 |
+| `PYEONIT_COMMUNITY_RETENTION_CLEANUP_BATCH_SIZE` | 선택 | 기본 `200`; 양수; 주기당 본문 합계 행 상한 및 이미지 처리 시도 상한 |
+| `PYEONIT_ADMIN_COMMUNITY_RETENTION_CLEANUP_ENABLED` | 선택 | 기본 `true`; 미탈퇴 회원 신고·제재 정리 활성화; scheduling-enabled=false도 적용 |
+| `PYEONIT_ADMIN_COMMUNITY_RETENTION_CLEANUP_CRON` | 선택 | 기본 `0 30 4 * * *`; UTC 매일 04:30; -이면 예약 비활성화 |
+| `PYEONIT_ADMIN_COMMUNITY_HANDLED_REPORT_RETENTION_DAYS` | 선택 | 기본 `365`; 처리 시각부터 신고 보관일, 양수; PENDING 제외 |
+| `PYEONIT_ADMIN_COMMUNITY_ENDED_SANCTION_RETENTION_DAYS` | 선택 | 기본 `365`; ends_at부터 제재 보관일, 양수; ends_at 없는 WARNING은 starts_at 기준, 무기한 정지 제외 |
+| `PYEONIT_ADMIN_COMMUNITY_RETENTION_CLEANUP_BATCH_SIZE` | 선택 | 기본 `500`; 양수; 주기당 신고·제재 합계 삭제 행 상한 |
 | `SERVER_PORT` | 선택 | 기본 `8081`; Docker healthcheck도 같은 값을 사용 |
 | `SERVER_FORWARD_HEADERS_STRATEGY` | 선택 | 기본 `framework`; 승인 후 신뢰 프록시가 외부 전달 헤더를 제거·재작성하도록 구성 |
 | `PYEONIT_COMMUNITY_STORAGE` | 선택 | 기본 `r2`; prod에서는 값과 무관하게 R2가 우선 선택됨. dev/test는 기본 LocalImageStorage, 명시적 `r2`일 때만 R2 |

@@ -14,11 +14,21 @@ spring:
 pyeonit:
   admin:
     community:
+      retention-cleanup-enabled: ${PYEONIT_ADMIN_COMMUNITY_RETENTION_CLEANUP_ENABLED:true}
+      retention-cleanup-cron: ${PYEONIT_ADMIN_COMMUNITY_RETENTION_CLEANUP_CRON:0 30 4 * * *}
+      handled-report-retention-days: ${PYEONIT_ADMIN_COMMUNITY_HANDLED_REPORT_RETENTION_DAYS:365}
+      ended-sanction-retention-days: ${PYEONIT_ADMIN_COMMUNITY_ENDED_SANCTION_RETENTION_DAYS:365}
+      retention-cleanup-batch-size: ${PYEONIT_ADMIN_COMMUNITY_RETENTION_CLEANUP_BATCH_SIZE:500}
       withdrawn-cleanup-enabled: ${PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_CLEANUP_ENABLED:true}
       withdrawn-cleanup-cron: ${PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_CLEANUP_CRON:0 0 4 * * *}
       withdrawn-retention-days: ${PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_RETENTION_DAYS:365}
       withdrawn-cleanup-batch-size: ${PYEONIT_ADMIN_COMMUNITY_WITHDRAWN_CLEANUP_BATCH_SIZE:500}
   community:
+    retention-cleanup-enabled: ${PYEONIT_COMMUNITY_RETENTION_CLEANUP_ENABLED:true}
+    retention-cleanup-cron: ${PYEONIT_COMMUNITY_RETENTION_CLEANUP_CRON:0 0 3 * * *}
+    deleted-body-retention-days: ${PYEONIT_COMMUNITY_DELETED_BODY_RETENTION_DAYS:30}
+    deleted-image-retention-days: ${PYEONIT_COMMUNITY_DELETED_IMAGE_RETENTION_DAYS:30}
+    retention-cleanup-batch-size: ${PYEONIT_COMMUNITY_RETENTION_CLEANUP_BATCH_SIZE:200}
     orphan-image-retention: ${PYEONIT_COMMUNITY_ORPHAN_IMAGE_RETENTION:24h}
     orphan-image-cleanup-interval: ${PYEONIT_COMMUNITY_ORPHAN_IMAGE_CLEANUP_INTERVAL:1h}
     orphan-image-cleanup-enabled: ${PYEONIT_COMMUNITY_ORPHAN_IMAGE_CLEANUP_ENABLED:true}

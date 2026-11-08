@@ -125,7 +125,7 @@ class CommunityTransactionTests {
     int board = db.queryForObject("select id from boards where code='FREE'", Integer.class);
     var image =
         service.upload(
-            new MockMultipartFile("file", "../../unsafe", "image/gif", "GIF89atest".getBytes()),
+            new MockMultipartFile("file", "../../unsafe", "image/gif", ImageFixtures.read("clean.gif")),
             auth(me));
     long id = number(image, "id");
     String key =
