@@ -9,7 +9,7 @@
 - 첫 추출은 학교당 generateContent **1요청**만 보낸다(503·타임아웃·토큰 잘림도 첫 단계 재시도 없음). 불일치 재추출 최대 2회는 ①② 첫 추출 뒤 남은 예산으로 수행하고, ③은 그 뒤다.
 - 예산은 `artifacts/quota-state.json`에 태평양 날짜별 누적한다. 재시도·체인 이동 포함 전송 직전에 집계한다. **모든 429는 즉시 당일 전체 중단**, 체인 이동도 하지 않으며 같은 날 재실행도 차단한다. 남은 학교는 QUOTA_WAIT, 종료 코드 0.
 - `load`는 `adopted=true`·`validation.passed=true`인 2026 결과만 적재한다. 검증 재계산, 학교·학년도·PDF SHA-256을 확인한다. 학교가 없으면 `monitor.seed.load_seed`를 import해 시드한다. 문서는 EXTRACTED, 추출 이력에는 실제 모델·결과·검증을 저장하며 해시 UNIQUE로 멱등 처리한다.
-- 전체 pytest 및 Postgres 임시 스키마 테스트: **145 passed, 3 deselected**. monitor·backend·web 등 금지 범위는 변경하지 않았다.
+- 최신 main(`f6240a7`) rebase 후 전용 임시 DB 전체 pytest 및 스키마 테스트: **180 passed, 3 deselected**. monitor·backend·web 등 금지 범위는 변경하지 않았다.
 - `SCHEDULE_PROPOSAL.md`와 `scripts/daily-backfill.sh`만 준비했다. launchctl·crontab 등록·실행 없음.
 
 ## 출처·품질 정정
